@@ -15,10 +15,11 @@
 		43C0904524B7DCE9009D291E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43C0904424B7DCE9009D291E /* Assets.xcassets */; };
 		43C0904824B7DCE9009D291E /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 43C0904624B7DCE9009D291E /* LaunchScreen.storyboard */; };
 		43C0904B24B7DCE9009D291E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 43C0904A24B7DCE9009D291E /* main.m */; };
-		AEFE4CFF28311BAA0023371A /* GameEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AEFE4CFC28311BAA0023371A /* GameEngine.cpp */; };
-		AEFE4D0028311BAA0023371A /* bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = AEFE4CFD28311BAA0023371A /* bundle.js */; };
-		AEFE4D02283125AF0023371A /* bakedColor.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEFE4D01283125AF0023371A /* bakedColor.inc */; };
-		AEFE4D0628312B0A0023371A /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AEFE4D0528312B0A0023371A /* JavaScriptCore.framework */; };
+		AE1D8A28284E989C0031A866 /* bakedColor.inc in Sources */ = {isa = PBXBuildFile; fileRef = AE1D8A23284E989C0031A866 /* bakedColor.inc */; };
+		AE1D8A29284E989C0031A866 /* image.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AE1D8A24284E989C0031A866 /* image.ktx2 */; };
+		AE1D8A2A284E989C0031A866 /* bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = AE1D8A25284E989C0031A866 /* bundle.js */; };
+		AE1D8A2B284E989C0031A866 /* GameEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AE1D8A27284E989C0031A866 /* GameEngine.cpp */; };
+		AE1D8A2D284E98EA0031A866 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,11 +37,12 @@
 		43C0904A24B7DCE9009D291E /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		43C0905124B7DF20009D291E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		9B0B8E3424AB80B4FB0F5FF1 /* Pods-HelloCocoaPods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.release.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.release.xcconfig"; sourceTree = "<group>"; };
-		AEFE4CFC28311BAA0023371A /* GameEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GameEngine.cpp; sourceTree = "<group>"; };
-		AEFE4CFD28311BAA0023371A /* bundle.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = bundle.js; sourceTree = "<group>"; };
-		AEFE4CFE28311BAA0023371A /* GameEngine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = GameEngine.hpp; sourceTree = "<group>"; };
-		AEFE4D01283125AF0023371A /* bakedColor.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = bakedColor.inc; sourceTree = "<group>"; };
-		AEFE4D0528312B0A0023371A /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		AE1D8A23284E989C0031A866 /* bakedColor.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = bakedColor.inc; sourceTree = "<group>"; };
+		AE1D8A24284E989C0031A866 /* image.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = image.ktx2; sourceTree = "<group>"; };
+		AE1D8A25284E989C0031A866 /* bundle.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = bundle.js; sourceTree = "<group>"; };
+		AE1D8A26284E989C0031A866 /* GameEngine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = GameEngine.hpp; sourceTree = "<group>"; };
+		AE1D8A27284E989C0031A866 /* GameEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GameEngine.cpp; sourceTree = "<group>"; };
+		AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		D8F6B088AA46E901D4C80A53 /* libPods-HelloCocoaPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HelloCocoaPods.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DBDD44F53C2D94EF626D2238 /* Pods-HelloCocoaPods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.debug.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -50,7 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AEFE4D0628312B0A0023371A /* JavaScriptCore.framework in Frameworks */,
+				AE1D8A2D284E98EA0031A866 /* JavaScriptCore.framework in Frameworks */,
 				20551D7E31AE7D51EE5C49CB /* libPods-HelloCocoaPods.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -79,10 +81,11 @@
 		43C0903724B7DCE8009D291E /* HelloCocoaPods */ = {
 			isa = PBXGroup;
 			children = (
-				AEFE4D01283125AF0023371A /* bakedColor.inc */,
-				AEFE4CFD28311BAA0023371A /* bundle.js */,
-				AEFE4CFC28311BAA0023371A /* GameEngine.cpp */,
-				AEFE4CFE28311BAA0023371A /* GameEngine.hpp */,
+				AE1D8A23284E989C0031A866 /* bakedColor.inc */,
+				AE1D8A25284E989C0031A866 /* bundle.js */,
+				AE1D8A27284E989C0031A866 /* GameEngine.cpp */,
+				AE1D8A26284E989C0031A866 /* GameEngine.hpp */,
+				AE1D8A24284E989C0031A866 /* image.ktx2 */,
 				43C0903824B7DCE8009D291E /* AppDelegate.h */,
 				43C0903924B7DCE8009D291E /* AppDelegate.m */,
 				43C0903B24B7DCE8009D291E /* SceneDelegate.h */,
@@ -101,7 +104,7 @@
 		66545F4C91B73CA97ED2371B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				AEFE4D0528312B0A0023371A /* JavaScriptCore.framework */,
+				AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */,
 				43C0905124B7DF20009D291E /* MetalKit.framework */,
 				D8F6B088AA46E901D4C80A53 /* libPods-HelloCocoaPods.a */,
 			);
@@ -174,9 +177,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AE1D8A29284E989C0031A866 /* image.ktx2 in Resources */,
 				43C0904824B7DCE9009D291E /* LaunchScreen.storyboard in Resources */,
+				AE1D8A2A284E989C0031A866 /* bundle.js in Resources */,
 				43C0904524B7DCE9009D291E /* Assets.xcassets in Resources */,
-				AEFE4D0028311BAA0023371A /* bundle.js in Resources */,
 				43C0904324B7DCE8009D291E /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -188,10 +192,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AEFE4D02283125AF0023371A /* bakedColor.inc in Sources */,
+				AE1D8A28284E989C0031A866 /* bakedColor.inc in Sources */,
 				43C0904024B7DCE8009D291E /* ViewController.mm in Sources */,
-				AEFE4CFF28311BAA0023371A /* GameEngine.cpp in Sources */,
 				43C0903A24B7DCE8009D291E /* AppDelegate.m in Sources */,
+				AE1D8A2B284E989C0031A866 /* GameEngine.cpp in Sources */,
 				43C0904B24B7DCE9009D291E /* main.m in Sources */,
 				43C0903D24B7DCE8009D291E /* SceneDelegate.m in Sources */,
 			);
@@ -225,7 +229,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -283,7 +287,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;

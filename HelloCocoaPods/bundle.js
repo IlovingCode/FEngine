@@ -19,8 +19,8 @@ class Node {
     scale = new Vec3(1, 1, 1)
     children = []
     
-    constructor() {
-        this.id = createEntity()
+    constructor(id = -1) {
+        this.id = id
     }
     
     addChild(node) {
@@ -40,11 +40,11 @@ let root = new Node
 var init = function() {
     beginScene()
 
-    let node = new Node()
+    let node = new Node(createEntity())
     addCamera(node.id)
     root.addChild(node)
     
-    node = new Node()
+    node = new Node(createEntity())
     addRenderer(node.id)
     root.addChild(node)
     

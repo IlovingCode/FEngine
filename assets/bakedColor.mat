@@ -1,0 +1,23 @@
+material {
+    name : bakedColor,
+    parameters : [
+        {
+            type : sampler2d,
+            name : texture
+        }
+    ],
+    requires : [
+        uv0
+    ],
+    shadingModel : unlit,
+    culling : none
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        vec4 color = texture(materialParams_texture, getUV0());
+
+        material.baseColor = color;
+    }
+}

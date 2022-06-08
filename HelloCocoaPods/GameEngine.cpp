@@ -12,6 +12,8 @@
 #undef DEBUG
 
 // These are all C++ headers, so make sure the type of this file is Objective-C++ source.
+#include <ktxreader/Ktx2Reader.h>
+
 #include <filament/Engine.h>
 #include <filament/SwapChain.h>
 #include <filament/Renderer.h>
@@ -25,14 +27,15 @@
 #include <filament/Material.h>
 #include <filament/MaterialInstance.h>
 #include <filament/TransformManager.h>
-
-#include <filamat/MaterialBuilder.h>
+#include <filament/TextureSampler.h>
 
 #include <utils/Entity.h>
+#include <utils/Path.h>
 #include <utils/EntityManager.h>
 
 #include <JavaScriptCore/JavaScriptCore.h>
 #include <iostream>
+#include <fstream>
 
 #ifndef JSMACRO
     #define JSMACRO
@@ -43,16 +46,9 @@ using namespace std;
 using namespace filament;
 using namespace utils;
 
-struct App {
-    VertexBuffer* vb;
-    IndexBuffer* ib;
-    Material* mat;
-    Entity renderable;
-};
-
 struct Vertex {
     filament::math::float2 position;
-    uint32_t color;
+    filament::math::float2 uv;
 };
 
 Engine* engine;
@@ -115,15 +111,34 @@ JSCALLBACK(createEntity){
     return JSValueMakeNumber(ctx, id);
 }
 
+vector<uint8_t> readFile(const Path& inputPath) {
+    ifstream file(inputPath, ios::binary);
+    return vector<uint8_t>((istreambuf_iterator<char>(file)), {});
+}
+
+Texture* loadImage() {
+    const Path parent = Path::getCurrentExecutable().getParent();
+    const auto contents = readFile(parent + "image.ktx2");
+
+    ktxreader::Ktx2Reader reader(*engine);
+
+    // Uncompressed formats are lower priority, so they get added last.
+    reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
+    reader.requestFormat(Texture::InternalFormat::RGBA8);
+
+    return reader.load(contents.data(), contents.size(),
+            ktxreader::Ktx2Reader::TransferFunction::sRGB);
+}
+
 JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
     
     static const Vertex VERTICES[4] = {
-        {{-1, 1}, 0xffff0000u},
-        {{1, 1}, 0xff00ff00u},
-        {{-1, -1}, 0xff0000ffu},
-        {{1, -1}, 0xff0000ffu},
+        {{-1, -1}, {0, 0}},
+        {{ 1, -1}, {1, 0}},
+        {{-1,  1}, {0, 1}},
+        {{ 1,  1}, {1, 1}},
     };
 
     static constexpr uint16_t INDICES[6] = { 0, 1, 2, 3, 2, 1 };
@@ -136,11 +151,10 @@ JSCALLBACK(addRenderer){
     VertexBuffer* vb = VertexBuffer::Builder()
         .vertexCount(4)
         .bufferCount(1)
-        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 12)
-        .attribute(VertexAttribute::COLOR, 0, VertexBuffer::AttributeType::UBYTE4, 8, 12)
-        .normalized(VertexAttribute::COLOR)
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 16)
+        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 8, 16)
         .build(*engine);
-    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, 48, nullptr));
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, 64, nullptr));
 
     IndexBuffer* ib = IndexBuffer::Builder()
         .indexCount(6)
@@ -151,10 +165,13 @@ JSCALLBACK(addRenderer){
     Material* mat = Material::Builder()
         .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
         .build(*engine);
+    
+    auto matInstance = mat->getDefaultInstance();
+    matInstance->setParameter("texture", loadImage(), TextureSampler());
 
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
-        .material(0, mat->getDefaultInstance())
+        .material(0, matInstance)
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, 6)
         .culling(false)
         .receiveShadows(false)
