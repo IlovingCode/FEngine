@@ -105,10 +105,17 @@ JSCALLBACK(beginScene){
 
 JSCALLBACK(createEntity){
     Entity e = EntityManager::get().create();
-    uint32_t id = Entity::smuggle(e);
     view->getScene()->addEntity(e);
+
+    if(argumentCount > 0) {
+        uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+        auto& tcm = engine->getTransformManager();
+        Entity parent = Entity::import(id);
+        tcm.create(e, tcm.getInstance(parent));
+//        cout << tcm.getChildCount(tcm.getInstance(parent));
+    }
     
-    return JSValueMakeNumber(ctx, id);
+    return JSValueMakeNumber(ctx, Entity::smuggle(e));
 }
 
 vector<uint8_t> readFile(const Path& inputPath) {
@@ -190,21 +197,27 @@ JSCALLBACK(updateTransforms){
 //    cout << count << endl;
     
     size_t strike = 10;
-    count /= strike;
+//    count /= strike;
+    
+    auto& tcm = engine->getTransformManager();
+//    tcm.openLocalTransformTransaction();
     
     for (unsigned int i = 0; i < count; i += strike) {
         uint32_t id = d[i];
+        
         filament::math::float3 pos {d[i + 1], d[i + 2], d[i + 3] };
         filament::math::float3 rot {d[i + 4], d[i + 5], d[i + 6] };
         filament::math::float3 scl {d[i + 7], d[i + 8], d[i + 9] };
 
         Entity e = Entity::import(id);
-        auto& tcm = engine->getTransformManager();
+        
         tcm.setTransform(tcm.getInstance(e),
             filament::math::mat4f::translation(pos) *
             filament::math::mat4f::eulerZYX(rot.z, rot.y, rot.x) *
             filament::math::mat4f::scaling(scl));
     }
+    
+//    tcm.commitLocalTransformTransaction();
     
     return arguments[0];
 }
@@ -235,6 +248,9 @@ JSObjectRef getScriptFunction(const char* name, JSObjectRef thisObject){
     JSStringRelease(funcName);
     
     return JSValueToObject(globalContext, func, nullptr);
+}
+
+void GameEngine::input(uint32_t x, uint32_t y, uint32_t state) {
 }
 
 GameEngine::GameEngine(void* nativeWindow, const char* source){

@@ -21,6 +21,7 @@ class Node {
     
     constructor(id = -1) {
         this.id = id
+        
     }
     
     addChild(node) {
@@ -47,14 +48,50 @@ var init = function() {
     node = new Node(createEntity())
     addRenderer(node.id)
     root.addChild(node)
+
+    let child = new Node(createEntity(node.id))
+    addRenderer(child.id)
+    node.addChild(child)
     
-//    node = new Node(createEntity())
-//    addRenderer(node.id)
-//    root.addChild(node)
+    child.position.x = 3
+    
+    let child1 = new Node(createEntity(child.id))
+    addRenderer(child1.id)
+    child.addChild(child1)
+    
+    child1.position.y = 3
+    
+    let a = child.toArray()
+    a.push(...child1.toArray())
+    updateTransforms(new Float32Array(a))
 }
 
+function abs(num) {
+    return num > 0 ? num : -num
+}
+
+var t = 0
+
 var update = function (dt) {
-//    updateTransforms(new Float32Array(node.toArray()))
+    let target = root.children[1]
+    target.rotation.z += .01
+    
+    let a = target.toArray()
+    
+    target = target.children[0]
+    target.rotation.z += .01
+    
+    a.push(...target.toArray())
+    
+    target = target.children[0]
+    
+    t += dt
+    target.position.x = abs((t % 10) - 5)
+    
+    a.push(...target.toArray())
+    
+    updateTransforms(new Float32Array(a))
+
 //    log(dt)
 }
 

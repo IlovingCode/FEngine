@@ -15,6 +15,7 @@ public:
     GameEngine(void* nativeWindow, const char* source);
     void update(double now);
     void resize(uint32_t width, uint32_t height);
+    void input(uint32_t x, uint32_t y, uint32_t state);
     ~GameEngine();
 };
 

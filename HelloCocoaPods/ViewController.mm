@@ -58,4 +58,19 @@
 - (void)drawInMTKView:(nonnull MTKView*)view {
     _gameEngine->update(CACurrentMediaTime());
 }
+
+#pragma mark - touch event methods
+- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+    NSLog(@"touchesBegan");
+}
+- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
+    NSLog(@"touchesCancelled");
+}
+- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
+    NSLog(@"touchesEnded");
+}
+- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
+    NSLog(@"touchesMoved");
+}
+
 @end
