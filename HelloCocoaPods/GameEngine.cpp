@@ -88,7 +88,7 @@ string JSValueToStdString(JSContextRef context, JSValueRef jsValue) {
 }
 
 JSCALLBACK(log){
-    for (int i = 0;i< argumentCount;i++) {
+    for (int i = 0; i < argumentCount; i++) {
         cout << JSValueToStdString(ctx, arguments[i]) << ' ';
     };
     cout << endl;
@@ -123,9 +123,10 @@ vector<uint8_t> readFile(const Path& inputPath) {
     return vector<uint8_t>((istreambuf_iterator<char>(file)), {});
 }
 
-Texture* loadImage() {
+Texture* loadImage(string filename) {
     const Path parent = Path::getCurrentExecutable().getParent();
-    const auto contents = readFile(parent + "image.ktx2");
+    cout << (parent + filename) << endl;
+    const auto contents = readFile(parent + filename);
 
     ktxreader::Ktx2Reader reader(*engine);
 
@@ -155,6 +156,10 @@ JSCALLBACK(addRenderer){
         #include "bakedColor.inc"
     };
     
+    static Material* mat = Material::Builder()
+        .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
+        .build(*engine);
+    
     VertexBuffer* vb = VertexBuffer::Builder()
         .vertexCount(4)
         .bufferCount(1)
@@ -169,12 +174,11 @@ JSCALLBACK(addRenderer){
         .build(*engine);
     ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, 12, nullptr));
 
-    Material* mat = Material::Builder()
-        .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
-        .build(*engine);
-    
-    auto matInstance = mat->getDefaultInstance();
-    matInstance->setParameter("texture", loadImage(), TextureSampler());
+    auto matInstance = mat->createInstance();
+    if(argumentCount > 1) {
+        string file = JSValueToStdString(ctx, arguments[1]);
+        matInstance->setParameter("texture", loadImage(file), TextureSampler());
+    }
 
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
@@ -200,7 +204,7 @@ JSCALLBACK(updateTransforms){
 //    count /= strike;
     
     auto& tcm = engine->getTransformManager();
-//    tcm.openLocalTransformTransaction();
+    tcm.openLocalTransformTransaction();
     
     for (unsigned int i = 0; i < count; i += strike) {
         uint32_t id = d[i];
@@ -217,7 +221,7 @@ JSCALLBACK(updateTransforms){
             filament::math::mat4f::scaling(scl));
     }
     
-//    tcm.commitLocalTransformTransaction();
+    tcm.commitLocalTransformTransaction();
     
     return arguments[0];
 }

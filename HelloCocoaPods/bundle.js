@@ -46,17 +46,17 @@ var init = function() {
     root.addChild(node)
     
     node = new Node(createEntity())
-    addRenderer(node.id)
+    addRenderer(node.id, 'image.ktx2')
     root.addChild(node)
 
     let child = new Node(createEntity(node.id))
-    addRenderer(child.id)
+    addRenderer(child.id, 'image.ktx2')
     node.addChild(child)
     
     child.position.x = 3
     
     let child1 = new Node(createEntity(child.id))
-    addRenderer(child1.id)
+    addRenderer(child1.id, 'image.ktx2')
     child.addChild(child1)
     
     child1.position.y = 3
@@ -73,22 +73,23 @@ function abs(num) {
 var t = 0
 
 var update = function (dt) {
-    let target = root.children[1]
-    target.rotation.z += .01
+    let a = []
     
-    let a = target.toArray()
+    let target0 = root.children[1]
+//    target.rotation.z += .01
     
-    target = target.children[0]
-    target.rotation.z += .01
+    a.push(...target0.toArray())
     
-    a.push(...target.toArray())
+    let target1 = target0.children[0]
+    target1.rotation.z += .01
     
-    target = target.children[0]
+    a.push(...target1.toArray())
     
+    let target2 = target1.children[0]
     t += dt
-    target.position.x = abs((t % 10) - 5)
-    
-    a.push(...target.toArray())
+    target2.position.y = abs((t % 10) - 5)
+
+    a.push(...target2.toArray())
     
     updateTransforms(new Float32Array(a))
 
