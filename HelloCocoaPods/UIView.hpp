@@ -6,9 +6,11 @@
 //  Copyright © 2022 Google. All rights reserved.
 //
 
+#include <utils/Entity.h>
 #include <iostream>
 #include <stdint.h>
 
+using namespace utils;
 using namespace std;
 
 #ifndef UIView_hpp
@@ -17,7 +19,7 @@ using namespace std;
 class UIVIew {
 public:
     UIVIew(size_t designWidth, size_t designHeight);
-    void addSprite(size_t width, size_t height, string spriteName);
+    void addSprite(size_t width, size_t height, string spriteName, Entity entity);
 };
 
 #endif /* UIView_hpp */
