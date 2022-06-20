@@ -15,7 +15,6 @@
 		43C0904524B7DCE9009D291E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43C0904424B7DCE9009D291E /* Assets.xcassets */; };
 		43C0904824B7DCE9009D291E /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 43C0904624B7DCE9009D291E /* LaunchScreen.storyboard */; };
 		43C0904B24B7DCE9009D291E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 43C0904A24B7DCE9009D291E /* main.m */; };
-		6C7EA36E2858829A00993A93 /* UIView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6C7EA36C2858829A00993A93 /* UIView.cpp */; };
 		AE1D8A28284E989C0031A866 /* bakedColor.inc in Sources */ = {isa = PBXBuildFile; fileRef = AE1D8A23284E989C0031A866 /* bakedColor.inc */; };
 		AE1D8A29284E989C0031A866 /* image.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AE1D8A24284E989C0031A866 /* image.ktx2 */; };
 		AE1D8A2A284E989C0031A866 /* bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = AE1D8A25284E989C0031A866 /* bundle.js */; };
@@ -37,8 +36,6 @@
 		43C0904924B7DCE9009D291E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		43C0904A24B7DCE9009D291E /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		43C0905124B7DF20009D291E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
-		6C7EA36C2858829A00993A93 /* UIView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = UIView.cpp; sourceTree = "<group>"; };
-		6C7EA36D2858829A00993A93 /* UIView.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = UIView.hpp; sourceTree = "<group>"; };
 		9B0B8E3424AB80B4FB0F5FF1 /* Pods-HelloCocoaPods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.release.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.release.xcconfig"; sourceTree = "<group>"; };
 		AE1D8A23284E989C0031A866 /* bakedColor.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = bakedColor.inc; sourceTree = "<group>"; };
 		AE1D8A24284E989C0031A866 /* image.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = image.ktx2; sourceTree = "<group>"; };
@@ -100,8 +97,6 @@
 				43C0904624B7DCE9009D291E /* LaunchScreen.storyboard */,
 				43C0904924B7DCE9009D291E /* Info.plist */,
 				43C0904A24B7DCE9009D291E /* main.m */,
-				6C7EA36C2858829A00993A93 /* UIView.cpp */,
-				6C7EA36D2858829A00993A93 /* UIView.hpp */,
 			);
 			path = HelloCocoaPods;
 			sourceTree = "<group>";
@@ -225,7 +220,6 @@
 			files = (
 				AE1D8A28284E989C0031A866 /* bakedColor.inc in Sources */,
 				43C0904024B7DCE8009D291E /* ViewController.mm in Sources */,
-				6C7EA36E2858829A00993A93 /* UIView.cpp in Sources */,
 				43C0903A24B7DCE8009D291E /* AppDelegate.m in Sources */,
 				AE1D8A2B284E989C0031A866 /* GameEngine.cpp in Sources */,
 				43C0904B24B7DCE9009D291E /* main.m in Sources */,
