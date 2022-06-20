@@ -12,6 +12,7 @@
 #undef DEBUG
 
 // These are all C++ headers, so make sure the type of this file is Objective-C++ source.
+#include <ktxreader/Ktx2Reader.h>
 
 #include <filament/Engine.h>
 #include <filament/SwapChain.h>
@@ -20,13 +21,21 @@
 #include <filament/Camera.h>
 #include <filament/Scene.h>
 #include <filament/Viewport.h>
-#include <filament/TransformManager.h>
+#include <filament/VertexBuffer.h>
+#include <filament/IndexBuffer.h>
 #include <filament/RenderableManager.h>
+#include <filament/Material.h>
+#include <filament/MaterialInstance.h>
+#include <filament/TransformManager.h>
+#include <filament/TextureSampler.h>
 
-#include "UIView.hpp"
+#include <utils/Entity.h>
+#include <utils/Path.h>
 #include <utils/EntityManager.h>
 
 #include <JavaScriptCore/JavaScriptCore.h>
+#include <iostream>
+#include <fstream>
 
 #ifndef JSMACRO
     #define JSMACRO
@@ -37,19 +46,21 @@ using namespace std;
 using namespace filament;
 using namespace utils;
 
+struct Vertex {
+    filament::math::float2 position;
+    filament::math::float2 uv;
+};
+
 Engine* engine;
 Renderer* renderer;
 View* view;
 SwapChain* swapChain;
-UIVIew* ui;
 
 JSGlobalContextRef globalContext;
 JSObjectRef updateLoop;
 double current_time;
 
 GameEngine::~GameEngine(){
-    delete ui;
-    
     engine->destroyCameraComponent(view->getCamera().getEntity());
     view->getScene()->forEach([](Entity e) {
         engine->destroy(e);
@@ -89,8 +100,6 @@ JSCALLBACK(beginScene){
     Scene* scene = engine->createScene();
     view->setScene(scene);
     
-    ui = new UIVIew(640, 960);
-    
     return nullptr;
 }
 
@@ -109,10 +118,76 @@ JSCALLBACK(createEntity){
     return JSValueMakeNumber(ctx, Entity::smuggle(e));
 }
 
+vector<uint8_t> readFile(const Path& inputPath) {
+    ifstream file(inputPath, ios::binary);
+    return vector<uint8_t>((istreambuf_iterator<char>(file)), {});
+}
+
+Texture* loadImage(string filename) {
+    const Path parent = Path::getCurrentExecutable().getParent();
+    cout << (parent + filename) << endl;
+    const auto contents = readFile(parent + filename);
+
+    ktxreader::Ktx2Reader reader(*engine);
+
+    // Uncompressed formats are lower priority, so they get added last.
+    reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
+    reader.requestFormat(Texture::InternalFormat::RGBA8);
+
+    return reader.load(contents.data(), contents.size(),
+            ktxreader::Ktx2Reader::TransferFunction::sRGB);
+}
+
 JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    Entity entity = Entity::import(id);
     
-    ui->addSprite(10, 10, JSValueToStdString(ctx, arguments[1]), Entity::import(id));
+    static const Vertex VERTICES[4] = {
+        {{-1, -1}, {0, 0}},
+        {{ 1, -1}, {1, 0}},
+        {{-1,  1}, {0, 1}},
+        {{ 1,  1}, {1, 1}},
+    };
+
+    static constexpr uint16_t INDICES[6] = { 0, 1, 2, 3, 2, 1 };
+
+    // This file is compiled via the matc tool. See the "Run Script" build phase.
+    static constexpr uint8_t BAKED_COLOR_PACKAGE[] = {
+        #include "bakedColor.inc"
+    };
+    
+    static Material* mat = Material::Builder()
+        .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
+        .build(*engine);
+    
+    VertexBuffer* vb = VertexBuffer::Builder()
+        .vertexCount(4)
+        .bufferCount(1)
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 16)
+        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 8, 16)
+        .build(*engine);
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, 64, nullptr));
+
+    IndexBuffer* ib = IndexBuffer::Builder()
+        .indexCount(6)
+        .bufferType(IndexBuffer::IndexType::USHORT)
+        .build(*engine);
+    ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, 12, nullptr));
+
+    auto matInstance = mat->createInstance();
+    if(argumentCount > 1) {
+        string file = JSValueToStdString(ctx, arguments[1]);
+        matInstance->setParameter("texture", loadImage(file), TextureSampler());
+    }
+
+    RenderableManager::Builder(1)
+        .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
+        .material(0, matInstance)
+        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, 6)
+        .culling(false)
+        .receiveShadows(false)
+        .castShadows(false)
+        .build(*engine, entity);
     
     return arguments[0];
 }
@@ -134,16 +209,16 @@ JSCALLBACK(updateTransforms){
     for (unsigned int i = 0; i < count; i += strike) {
         uint32_t id = d[i];
         
-        math::float3 pos {d[i + 1], d[i + 2], d[i + 3] };
-        math::float3 rot {d[i + 4], d[i + 5], d[i + 6] };
-        math::float3 scl {d[i + 7], d[i + 8], d[i + 9] };
+        filament::math::float3 pos {d[i + 1], d[i + 2], d[i + 3] };
+        filament::math::float3 rot {d[i + 4], d[i + 5], d[i + 6] };
+        filament::math::float3 scl {d[i + 7], d[i + 8], d[i + 9] };
 
         Entity e = Entity::import(id);
         
         tcm.setTransform(tcm.getInstance(e),
-            math::mat4f::translation(pos) *
-            math::mat4f::eulerZYX(rot.z, rot.y, rot.x) *
-            math::mat4f::scaling(scl));
+            filament::math::mat4f::translation(pos) *
+            filament::math::mat4f::eulerZYX(rot.z, rot.y, rot.x) *
+            filament::math::mat4f::scaling(scl));
     }
     
     tcm.commitLocalTransformTransaction();
