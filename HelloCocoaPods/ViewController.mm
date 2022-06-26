@@ -39,10 +39,10 @@
     MTKView* mtkView = (MTKView*) self.view;
     mtkView.delegate = self;
     
-    NSString* path = [[NSBundle mainBundle] pathForResource:@"bundle" ofType:@"js"];
-    NSString* content = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
+//    NSString* path = [[NSBundle mainBundle] pathForResource:@"bundle" ofType:@"js"];
+//    NSString* content = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
     
-    _gameEngine = new GameEngine((__bridge void*) mtkView.layer, content.UTF8String);
+    _gameEngine = new GameEngine((__bridge void*) mtkView.layer);
     // Give our View a starting size based on the drawable size.
     [self mtkView:mtkView drawableSizeWillChange:mtkView.drawableSize];
 }
@@ -60,17 +60,24 @@
 }
 
 #pragma mark - touch event methods
-- (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-    NSLog(@"touchesBegan");
+- (void)touchesBegan:(NSSet<UITouch*> *)touches withEvent:(UIEvent *)event {
+    [self sendInput:touches.anyObject];
 }
-- (void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
-    NSLog(@"touchesCancelled");
+- (void)touchesCancelled:(NSSet<UITouch*> *)touches withEvent:(UIEvent *)event {
+    [self sendInput:touches.anyObject];
 }
-- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
-    NSLog(@"touchesEnded");
+- (void)touchesEnded:(NSSet<UITouch*> *)touches withEvent:(UIEvent *)event {
+    [self sendInput:touches.anyObject];
 }
-- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
-    NSLog(@"touchesMoved");
+
+- (void)touchesMoved:(NSSet<UITouch*> *)touches withEvent:(UIEvent *)event {
+    [self sendInput:touches.anyObject];
+}
+
+
+- (void)sendInput:(UITouch*)touch {
+    CGPoint location = [touch locationInView:self.view];
+    _gameEngine->input(location.x, location.y, (int32_t)touch.phase);
 }
 
 @end

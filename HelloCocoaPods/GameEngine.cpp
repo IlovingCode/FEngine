@@ -35,6 +35,7 @@
 
 #include <JavaScriptCore/JavaScriptCore.h>
 #include <iostream>
+#include <sstream>
 #include <fstream>
 
 #ifndef JSMACRO
@@ -51,6 +52,12 @@ struct Vertex {
     filament::math::float2 uv;
 };
 
+struct Input {
+    uint32_t x;
+    uint32_t y;
+    int state;
+};
+
 Engine* engine;
 Renderer* renderer;
 View* view;
@@ -58,7 +65,9 @@ SwapChain* swapChain;
 
 JSGlobalContextRef globalContext;
 JSObjectRef updateLoop;
+JSObjectRef resizeView;
 double current_time;
+Input input;
 
 GameEngine::~GameEngine(){
     engine->destroyCameraComponent(view->getCamera().getEntity());
@@ -96,7 +105,6 @@ JSCALLBACK(log){
 }
 
 JSCALLBACK(beginScene){
-    view = engine->createView();
     Scene* scene = engine->createScene();
     view->setScene(scene);
     
@@ -118,15 +126,11 @@ JSCALLBACK(createEntity){
     return JSValueMakeNumber(ctx, Entity::smuggle(e));
 }
 
-vector<uint8_t> readFile(const Path& inputPath) {
-    ifstream file(inputPath, ios::binary);
-    return vector<uint8_t>((istreambuf_iterator<char>(file)), {});
-}
-
 Texture* loadImage(string filename) {
     const Path parent = Path::getCurrentExecutable().getParent();
-    cout << (parent + filename) << endl;
-    const auto contents = readFile(parent + filename);
+//    cout << (parent + filename) << endl;
+    ifstream file(parent + filename, ios::binary);
+    const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
 
     ktxreader::Ktx2Reader reader(*engine);
 
@@ -142,11 +146,14 @@ JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
     
-    static const Vertex VERTICES[4] = {
-        {{-1, -1}, {0, 0}},
-        {{ 1, -1}, {1, 0}},
-        {{-1,  1}, {0, 1}},
-        {{ 1,  1}, {1, 1}},
+    float width = JSValueToNumber(ctx, arguments[2], nullptr) * .5f;
+    float height = JSValueToNumber(ctx, arguments[3], nullptr) * .5f;
+    
+    const Vertex* VERTICES = new Vertex[4] {
+        {{-width, -height}, {0, 0}},
+        {{ width, -height}, {1, 0}},
+        {{-width,  height}, {0, 1}},
+        {{ width,  height}, {1, 1}},
     };
 
     static constexpr uint16_t INDICES[6] = { 0, 1, 2, 3, 2, 1 };
@@ -199,7 +206,6 @@ JSCALLBACK(updateTransforms){
     Float32* d = reinterpret_cast<Float32*>(buffer);
 
 //    cout << count << endl;
-    
     size_t strike = 10;
 //    count /= strike;
     
@@ -239,6 +245,26 @@ JSCALLBACK(addCamera){
     return arguments[0];
 }
 
+JSCALLBACK(updateCamera){
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    Entity entity = Entity::import(id);
+    
+    auto camera = engine->getCameraComponent(entity);
+    
+    const double width = JSValueToNumber(ctx, arguments[1], nullptr);
+    const double height = JSValueToNumber(ctx, arguments[2], nullptr);
+    
+    const double right  =  width * .5;
+    const double top    =  height * .5;
+    const double left   = -right;
+    const double bottom = -top;
+    const double near   =  0.0;
+    const double far    =  1.0;
+    camera->setProjection(Camera::Projection::ORTHO, left, right, bottom, top, near, far);
+    
+    return arguments[0];
+}
+
 void registerNativeFunction(const char* name, JSObjectCallAsFunctionCallback callback, JSObjectRef thisObject){
     JSStringRef funcName = JSStringCreateWithUTF8CString(name);
     JSObjectRef func = JSObjectMakeFunctionWithCallback(globalContext, funcName, callback);
@@ -254,13 +280,26 @@ JSObjectRef getScriptFunction(const char* name, JSObjectRef thisObject){
     return JSValueToObject(globalContext, func, nullptr);
 }
 
-void GameEngine::input(uint32_t x, uint32_t y, uint32_t state) {
+void GameEngine::input(uint32_t x, uint32_t y, int32_t state) {
+    JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
+    cout<< state << endl;
+    
+    static const JSStringRef inputStr = JSStringCreateWithUTF8CString("input");
+    static const JSStringRef xStr = JSStringCreateWithUTF8CString("x");
+    static const JSStringRef yStr = JSStringCreateWithUTF8CString("y");
+    static const JSStringRef stateStr = JSStringCreateWithUTF8CString("state");
+    
+    JSObjectRef input = JSValueToObject(globalContext, JSObjectGetProperty(globalContext, globalObject, inputStr, nullptr), nullptr);
+    JSObjectSetProperty(globalContext, input, xStr, JSValueMakeNumber(globalContext, x), kJSPropertyAttributeNone, nullptr);
+    JSObjectSetProperty(globalContext, input, yStr, JSValueMakeNumber(globalContext, y), kJSPropertyAttributeNone, nullptr);
+    JSObjectSetProperty(globalContext, input, stateStr, JSValueMakeNumber(globalContext, state), kJSPropertyAttributeNone, nullptr);
 }
 
-GameEngine::GameEngine(void* nativeWindow, const char* source){
+GameEngine::GameEngine(void* nativeWindow){
     engine = Engine::create(filament::Engine::Backend::METAL);
     swapChain = engine->createSwapChain(nativeWindow);
     renderer = engine->createRenderer();
+    view = engine->createView();
     
     globalContext = JSGlobalContextCreate(nullptr);
     JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
@@ -271,13 +310,22 @@ GameEngine::GameEngine(void* nativeWindow, const char* source){
     registerNativeFunction("createEntity", createEntity, globalObject);
     registerNativeFunction("addRenderer", addRenderer, globalObject);
     registerNativeFunction("updateTransforms", updateTransforms, globalObject);
+    registerNativeFunction("updateCamera", updateCamera, globalObject);
     
-    JSStringRef script = JSStringCreateWithUTF8CString(source);
+    const Path parent = Path::getCurrentExecutable().getParent();
+//    cout << (parent + filename) << endl;
+    ifstream file(parent + "bundle.js");
+    ostringstream buffer;
+    buffer << file.rdbuf();
+    
+    JSStringRef script = JSStringCreateWithUTF8CString(buffer.str().c_str());
+//    JSStringRef script = JSStringCreateWithUTF8CString(source);
     JSValueRef exception = nullptr;
     JSEvaluateScript(globalContext, script, nullptr, nullptr, 0, &exception);
     if(exception) cout << JSValueToStdString(globalContext, exception);
     
     updateLoop = getScriptFunction("update", globalObject);
+    resizeView = getScriptFunction("resizeView", globalObject);
 
     JSStringRelease(script);
 }
@@ -300,14 +348,10 @@ void GameEngine::update(double now){
 void GameEngine::resize(uint32_t width, uint32_t height){
     view->setViewport({0, 0, width, height});
     
-    const double aspect = (double) width / height;
-    constexpr double ZOOM = 10.0;
+    JSValueRef args[2] {
+        JSValueMakeNumber(globalContext, width),
+        JSValueMakeNumber(globalContext, height)
+    };
     
-    const double right  =  ZOOM * aspect;
-    const double top    =  ZOOM;
-    const double left   = -right;
-    const double bottom = -top;
-    const double near   =  0.0;
-    const double far    =  1.0;
-    view->getCamera().setProjection(Camera::Projection::ORTHO, left, right, bottom, top, near, far);
+    JSObjectCallAsFunction(globalContext, resizeView, nullptr, 2, args, nullptr);
 }
