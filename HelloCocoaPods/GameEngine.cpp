@@ -86,6 +86,7 @@ GameEngine::~GameEngine(){
 }
 
 string JSValueToStdString(JSContextRef context, JSValueRef jsValue) {
+    
     JSStringRef jsString = JSValueToStringCopy(context, jsValue, nullptr);
     size_t maxBufferSize = JSStringGetMaximumUTF8CStringSize(jsString);
     char* utf8Buffer = new char[maxBufferSize];
@@ -142,6 +143,22 @@ Texture* loadImage(string filename) {
             ktxreader::Ktx2Reader::TransferFunction::sRGB);
 }
 
+JSCALLBACK(updatteMaterial) {
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    Entity entity = Entity::import(id);
+    
+    auto &rm = engine->getRenderableManager();
+    auto matInstance = rm.getMaterialInstanceAt(rm.getInstance(entity), 0);
+    
+    float alpha = JSValueToNumber(ctx, arguments[1], nullptr);
+    matInstance->setParameter("alpha", alpha);
+    
+    auto image = JSValueToStdString(ctx, arguments[2]);
+//    matInstance->setParameter("alpha", alpha);
+    
+    return arguments[0];
+}
+
 JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
@@ -163,7 +180,7 @@ JSCALLBACK(addRenderer){
         #include "bakedColor.inc"
     };
     
-    static Material* mat = Material::Builder()
+    static const Material* mat = Material::Builder()
         .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
         .build(*engine);
     
@@ -284,12 +301,12 @@ void GameEngine::input(uint32_t x, uint32_t y, int32_t state) {
     JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
     cout<< state << endl;
     
-    static const JSStringRef inputStr = JSStringCreateWithUTF8CString("input");
+    JSStringRef inputStr = JSStringCreateWithUTF8CString("input");
     static const JSStringRef xStr = JSStringCreateWithUTF8CString("x");
     static const JSStringRef yStr = JSStringCreateWithUTF8CString("y");
     static const JSStringRef stateStr = JSStringCreateWithUTF8CString("state");
+    static const JSObjectRef input = JSValueToObject(globalContext, JSObjectGetProperty(globalContext, globalObject, inputStr, nullptr), nullptr);
     
-    JSObjectRef input = JSValueToObject(globalContext, JSObjectGetProperty(globalContext, globalObject, inputStr, nullptr), nullptr);
     JSObjectSetProperty(globalContext, input, xStr, JSValueMakeNumber(globalContext, x), kJSPropertyAttributeNone, nullptr);
     JSObjectSetProperty(globalContext, input, yStr, JSValueMakeNumber(globalContext, y), kJSPropertyAttributeNone, nullptr);
     JSObjectSetProperty(globalContext, input, stateStr, JSValueMakeNumber(globalContext, state), kJSPropertyAttributeNone, nullptr);

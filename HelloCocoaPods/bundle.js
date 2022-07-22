@@ -49,6 +49,24 @@ class Node {
     }
 }
 
+class Component {
+    constructor() {
+        this.enabled = true
+    }
+}
+
+class Sprite extends Component {
+    constructor(node, image, width, height) {
+        super()
+
+        globalThis.addRenderer(node.id, image, width, height)
+    }
+
+    setAlpha(alpha) {
+        
+    }
+}
+
 let root = new Node
 
 var init = function() {
