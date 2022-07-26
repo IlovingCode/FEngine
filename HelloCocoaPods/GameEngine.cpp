@@ -47,10 +47,10 @@ using namespace std;
 using namespace filament;
 using namespace utils;
 
-struct Vertex {
-    filament::math::float2 position;
-    filament::math::float2 uv;
-};
+//struct Vertex {
+//    filament::math::float2 position;
+//    filament::math::float2 uv;
+//};
 
 struct Input {
     uint32_t x;
@@ -145,16 +145,16 @@ Texture* loadImage(string filename) {
 
 JSCALLBACK(updatteMaterial) {
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
-    Entity entity = Entity::import(id);
-    
     auto &rm = engine->getRenderableManager();
-    auto matInstance = rm.getMaterialInstanceAt(rm.getInstance(entity), 0);
+    RenderableManager::Instance instance = rm.getInstance(Entity::import(id));
     
-    float alpha = JSValueToNumber(ctx, arguments[1], nullptr);
-    matInstance->setParameter("alpha", alpha);
+    auto matInstance = rm.getMaterialInstanceAt(instance, 0);
     
-    auto image = JSValueToStdString(ctx, arguments[2]);
-//    matInstance->setParameter("alpha", alpha);
+    float color = JSValueToNumber(ctx, arguments[1], nullptr);
+    matInstance->setParameter("color", color);
+    
+    auto file = JSValueToStdString(ctx, arguments[2]);
+    matInstance->setParameter("texture", loadImage(file), TextureSampler());
     
     return arguments[0];
 }
@@ -163,15 +163,26 @@ JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
     
-    float width = JSValueToNumber(ctx, arguments[2], nullptr) * .5f;
-    float height = JSValueToNumber(ctx, arguments[3], nullptr) * .5f;
+//    float width = JSValueToNumber(ctx, arguments[1], nullptr) * .5f;
+//    float height = JSValueToNumber(ctx, arguments[2], nullptr) * .5f;
     
-    const Vertex* VERTICES = new Vertex[4] {
-        {{-width, -height}, {0, 0}},
-        {{ width, -height}, {1, 0}},
-        {{-width,  height}, {0, 1}},
-        {{ width,  height}, {1, 1}},
-    };
+//    const Vertex* VERTICES = new Vertex[4] {
+//        {{-width, -height}, {0, 0}},
+//        {{ width, -height}, {1, 0}},
+//        {{-width,  height}, {0, 1}},
+//        {{ width,  height}, {1, 1}},
+//    };
+    
+//    const float* VERTICES = new float[16] {
+//        -width, -height, 0, 0,
+//         width, -height, 1, 0,
+//        -width,  height, 0, 1,
+//         width,  height, 1, 1,
+//    };
+    
+    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+    void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+//    Float32* VERTICES = reinterpret_cast<Float32*>(buffer);
 
     static constexpr uint16_t INDICES[6] = { 0, 1, 2, 3, 2, 1 };
 
@@ -180,7 +191,7 @@ JSCALLBACK(addRenderer){
         #include "bakedColor.inc"
     };
     
-    static const Material* mat = Material::Builder()
+    static Material* const mat = Material::Builder()
         .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
         .build(*engine);
     
@@ -192,15 +203,15 @@ JSCALLBACK(addRenderer){
         .build(*engine);
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, 64, nullptr));
 
-    IndexBuffer* ib = IndexBuffer::Builder()
+    static IndexBuffer* const ib = IndexBuffer::Builder()
         .indexCount(6)
         .bufferType(IndexBuffer::IndexType::USHORT)
         .build(*engine);
     ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, 12, nullptr));
 
     auto matInstance = mat->createInstance();
-    if(argumentCount > 1) {
-        string file = JSValueToStdString(ctx, arguments[1]);
+    if(argumentCount > 2) {
+        string file = JSValueToStdString(ctx, arguments[2]);
         matInstance->setParameter("texture", loadImage(file), TextureSampler());
     }
 
