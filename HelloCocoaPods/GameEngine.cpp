@@ -62,6 +62,7 @@ Engine* engine;
 Renderer* renderer;
 View* view;
 SwapChain* swapChain;
+VertexBuffer* vb;
 
 JSGlobalContextRef globalContext;
 JSObjectRef updateLoop;
@@ -144,17 +145,9 @@ Texture* loadImage(string filename) {
 }
 
 JSCALLBACK(updatteMaterial) {
-    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
-    auto &rm = engine->getRenderableManager();
-    RenderableManager::Instance instance = rm.getInstance(Entity::import(id));
-    
-    auto matInstance = rm.getMaterialInstanceAt(instance, 0);
-    
-    float color = JSValueToNumber(ctx, arguments[1], nullptr);
-    matInstance->setParameter("color", color);
-    
-    auto file = JSValueToStdString(ctx, arguments[2]);
-    matInstance->setParameter("texture", loadImage(file), TextureSampler());
+    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+    void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, 64, nullptr));
     
     return arguments[0];
 }
@@ -195,7 +188,7 @@ JSCALLBACK(addRenderer){
         .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
         .build(*engine);
     
-    VertexBuffer* vb = VertexBuffer::Builder()
+    vb = VertexBuffer::Builder()
         .vertexCount(4)
         .bufferCount(1)
         .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 16)
