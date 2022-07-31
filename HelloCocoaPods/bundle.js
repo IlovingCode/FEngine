@@ -109,105 +109,103 @@ class SpriteSliced extends Component {
         this.left = left
         this.right = right
 
-        this.vb = this.createData(width, height)
+        this.vb = this.createData()
+        this.fillBuffer(width, height)
         this.native = globalThis.addRenderer(node.id(), this.vb, image)
     }
 
-    createData(width, height) {
-        width *= .5
-        height *= .5
-
-        let top = this.top
-        let bottom = this.bottom
-        let left = this.left
-        let right = this.right
-
+    createData() {
         let array = [
-            -width          , height - top      ,0, 0,  //0
-            -width + left   , height - top      ,1, 0,  //1
-            -width          , height            ,0, 1,  //2
-            -width + left   , height            ,1, 1,  //3
-             width - right  , height - top      ,0, 0,  //4
-             width          , height - top      ,1, 0,  //5
-             width - right  , height            ,0, 1,  //6
-             width          , height            ,1, 1,  //7
-            -width          ,-height            ,0, 0,  //8
-            -width + left   ,-height            ,1, 0,  //9
-            -width          ,-height + bottom   ,0, 1,  //10
-            -width + left   ,-height + bottom   ,1, 1,  //11
-             width - right  ,-height            ,0, 0,  //12
-             width          ,-height            ,1, 0,  //13
-             width - right  ,-height + bottom   ,0, 1,  //14
-             width          ,-height + bottom   ,1, 1,  //15
+            0, 0, 0, 0,  //0
+            0, 0, 1, 0,  //1
+            0, 0, 0, 1,  //2
+            0, 0, 1, 1,  //3
+            0, 0, 0, 0,  //4
+            0, 0, 1, 0,  //5
+            0, 0, 0, 1,  //6
+            0, 0, 1, 1,  //7
+            0, 0, 0, 0,  //8
+            0, 0, 1, 0,  //9
+            0, 0, 0, 1,  //10
+            0, 0, 1, 1,  //11
+            0, 0, 0, 0,  //12
+            0, 0, 1, 0,  //13
+            0, 0, 0, 1,  //14
+            0, 0, 1, 1,  //15
         ]
         return new Float32Array(array)
     }
 
-    setSprite(image, width, height) {
-        width *= .5
-        height *= .5
-
+    fillBuffer(width, height) {
         let top = this.top
         let bottom = this.bottom
         let left = this.left
         let right = this.right
 
-        let vb = this.vb
-        vb[0]  = -width         ,vb[1]  =  height - top
-        vb[4]  = -width + left  ,vb[5]  =  height - top
-        vb[8]  = -width         ,vb[9]  =  height
-        vb[12] = -width + left  ,vb[13] =  height
-        vb[16] =  width - right ,vb[17] =  height - top
-        vb[20] =  width         ,vb[21] =  height - top
-        vb[24] =  width - right ,vb[25] =  height
-        vb[28] =  width         ,vb[29] =  height
-        vb[32] = -width         ,vb[33] = -height
-        vb[36] = -width + left  ,vb[37] = -height
-        vb[40] = -width         ,vb[41] = -height + bottom
-        vb[44] = -width + left  ,vb[45] = -height + bottom
-        vb[48] =  width - right ,vb[49] = -height
-        vb[52] =  width         ,vb[53] = -height
-        vb[56] =  width - right ,vb[57] = -height + bottom
-        vb[60] =  width         ,vb[61] = -height + bottom
+        width = Math.max(width, top + bottom) * .5
+        height = Math.max(height, left + right) * .5
 
-        globalThis.updateRenderer(this.native, vb)
+        let vb = this.vb
+        vb[0] = -width, vb[1] = height - top
+        vb[4] = -width + left, vb[5] = height - top
+        vb[8] = -width, vb[9] = height
+        vb[12] = -width + left, vb[13] = height
+        vb[16] = width - right, vb[17] = height - top
+        vb[20] = width, vb[21] = height - top
+        vb[24] = width - right, vb[25] = height
+        vb[28] = width, vb[29] = height
+        vb[32] = -width, vb[33] = -height
+        vb[36] = -width + left, vb[37] = -height
+        vb[40] = -width, vb[41] = -height + bottom
+        vb[44] = -width + left, vb[45] = -height + bottom
+        vb[48] = width - right, vb[49] = -height
+        vb[52] = width, vb[53] = -height
+        vb[56] = width - right, vb[57] = -height + bottom
+        vb[60] = width, vb[61] = -height + bottom
+
+        return vb
+    }
+
+    setSprite(image, width, height) {
+        globalThis.updateRenderer(this.native, this.fillBuffer(width, height))
     }
 }
 
-class Sprite extends Component {
+class SpriteSimple extends Component {
     vb = null
     native = null
 
     constructor(node, image, width, height) {
         super(node)
 
-        this.vb = this.createData(width, height)
+        this.vb = this.createData()
+        this.fillBuffer(width, height)
         this.native = globalThis.addRenderer(node.id(), this.vb, image)
     }
 
-    createData(width, height) {
-        width *= .5
-        height *= .5
+    createData() {
         let array = [
-            -width, -height, 0, 0,  //0
-             width, -height, 1, 0,  //1
-            -width,  height, 0, 1,  //2
-             width,  height, 1, 1,  //3
+            0, 0, 0, 0,  //0
+            0, 0, 1, 0,  //1
+            0, 0, 0, 1,  //2
+            0, 0, 1, 1,  //3
         ]
         return new Float32Array(array)
     }
 
-    setSprite(image, width, height) {
+    fillBuffer(width, height) {
         width *= .5
         height *= .5
 
         let vb = this.vb
-        vb[0]  = -width ,vb[1]  = -height
-        vb[4]  =  width ,vb[5]  = -height
-        vb[8]  = -width ,vb[9]  =  height
-        vb[12] =  width ,vb[13] =  height
+        vb[0] = -width, vb[1] = -height
+        vb[4] = width, vb[5] = -height
+        vb[8] = -width, vb[9] = height
+        vb[12] = width, vb[13] = height
+    }
 
-        globalThis.updateRenderer(this.native, vb)
+    setSprite(image, width, height) {
+        globalThis.updateRenderer(this.native, this.fillBuffer(width, height))
     }
 }
 
@@ -221,11 +219,7 @@ var init = function () {
     camera = new Camera(node)
 
     node = root.addChild()
-    new Sprite(node, 'image.ktx2', 192, 194)
-}
-
-function abs(num) {
-    return num > 0 ? num : -num
+    new SpriteSliced(node, 'image.ktx2', 192, 194, 80, 80, 80, 80)
 }
 
 var input = { x: 0, y: 0, state: 3 }
@@ -262,7 +256,7 @@ var update = function (dt) {
     let target0 = root.children[1]
     target0.rotation.z += .01
 
-    target0.components[0].setSprite(null, abs((t % 200) - 100), abs((t % 200) - 100))
+    target0.components[0].setSprite(null, 200 + Math.abs((t % 100) - 50), 200 + Math.abs((t % 100) - 50))
     a.push(target0)
 
     a.length > 0 && sendUpdateTransform(a)

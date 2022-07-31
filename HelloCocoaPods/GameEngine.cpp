@@ -140,8 +140,9 @@ JSCALLBACK(updateRenderer) {
     VertexBuffer* vb = static_cast<VertexBuffer*>(data);
 
     array = JSValueToObject(ctx, arguments[1], nullptr);
+    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     data = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, 64, nullptr));
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, count * 4, nullptr));
     
     return arguments[0];
 }
@@ -207,16 +208,17 @@ JSCALLBACK(addRenderer){
         matInstance->setParameter("texture", loadImage(file), TextureSampler());
     }
 
+    auto ib_t = count > 16 ? ib_9 : ib;
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
         .material(0, matInstance)
-        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, 6)
+        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib_t, 0, ib_t->getIndexCount())
         .culling(false)
         .receiveShadows(false)
         .castShadows(false)
         .build(*engine, entity);
     
-    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, vb, sizeof(vb), nullptr, nullptr, nullptr);;
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, vb, sizeof(vb), nullptr, nullptr, nullptr);
 }
 
 JSCALLBACK(updateTransforms){
@@ -311,7 +313,7 @@ void GameEngine::input(uint16_t x, uint16_t y, int16_t state) {
         yStr = JSStringCreateWithUTF8CString("y");
         stateStr = JSStringCreateWithUTF8CString("state");
         input = JSValueToObject(globalContext, JSObjectGetProperty(globalContext, globalObject, inputStr, nullptr), nullptr);
-        
+
         JSStringRelease(inputStr);
     }
     
