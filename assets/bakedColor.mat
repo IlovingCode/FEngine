@@ -4,6 +4,10 @@ material {
         {
             type : sampler2d,
             name : texture
+        },
+        {
+            type : float3,
+            name : baseColor
         }
     ],
     requires : [

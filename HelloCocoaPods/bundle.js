@@ -93,24 +93,52 @@ class Camera extends Component {
     }
 }
 
-class Sprite extends Component {
+class SpriteSliced extends Component {
     vb = null
+    native = null
+    top = 0
+    bottom = 0
+    left = 0
+    right = 0
 
-    constructor(node, image, width, height) {
+    constructor(node, image, width, height, top, bottom, left, right) {
         super(node)
 
+        this.top = top
+        this.bottom = bottom
+        this.left = left
+        this.right = right
+
         this.vb = this.createData(width, height)
-        globalThis.addRenderer(node.id(), this.vb, image)
+        this.native = globalThis.addRenderer(node.id(), this.vb, image)
     }
 
     createData(width, height) {
         width *= .5
         height *= .5
+
+        let top = this.top
+        let bottom = this.bottom
+        let left = this.left
+        let right = this.right
+
         let array = [
-            -width, -height, 0, 0,
-            width, -height, 1, 0,
-            -width, height, 0, 1,
-            width, height, 1, 1,
+            -width          , height - top      ,0, 0,  //0
+            -width + left   , height - top      ,1, 0,  //1
+            -width          , height            ,0, 1,  //2
+            -width + left   , height            ,1, 1,  //3
+             width - right  , height - top      ,0, 0,  //4
+             width          , height - top      ,1, 0,  //5
+             width - right  , height            ,0, 1,  //6
+             width          , height            ,1, 1,  //7
+            -width          ,-height            ,0, 0,  //8
+            -width + left   ,-height            ,1, 0,  //9
+            -width          ,-height + bottom   ,0, 1,  //10
+            -width + left   ,-height + bottom   ,1, 1,  //11
+             width - right  ,-height            ,0, 0,  //12
+             width          ,-height            ,1, 0,  //13
+             width - right  ,-height + bottom   ,0, 1,  //14
+             width          ,-height + bottom   ,1, 1,  //15
         ]
         return new Float32Array(array)
     }
@@ -118,24 +146,68 @@ class Sprite extends Component {
     setSprite(image, width, height) {
         width *= .5
         height *= .5
-        // let array = [
-        //     -width, -height, 0, 0,
-        //     width, -height, 1, 0,
-        //     -width, height, 0, 1,
-        //     width, height, 1, 1,
-        // ]
+
+        let top = this.top
+        let bottom = this.bottom
+        let left = this.left
+        let right = this.right
 
         let vb = this.vb
-        vb[0] = -width
-        vb[1] = -height
-        vb[4] = width
-        vb[5] = -height
-        vb[8] = -width
-        vb[9] = height
-        vb[12] = width
-        vb[13] = height
+        vb[0]  = -width         ,vb[1]  =  height - top
+        vb[4]  = -width + left  ,vb[5]  =  height - top
+        vb[8]  = -width         ,vb[9]  =  height
+        vb[12] = -width + left  ,vb[13] =  height
+        vb[16] =  width - right ,vb[17] =  height - top
+        vb[20] =  width         ,vb[21] =  height - top
+        vb[24] =  width - right ,vb[25] =  height
+        vb[28] =  width         ,vb[29] =  height
+        vb[32] = -width         ,vb[33] = -height
+        vb[36] = -width + left  ,vb[37] = -height
+        vb[40] = -width         ,vb[41] = -height + bottom
+        vb[44] = -width + left  ,vb[45] = -height + bottom
+        vb[48] =  width - right ,vb[49] = -height
+        vb[52] =  width         ,vb[53] = -height
+        vb[56] =  width - right ,vb[57] = -height + bottom
+        vb[60] =  width         ,vb[61] = -height + bottom
 
-        // globalThis.log(width)
+        globalThis.updateRenderer(this.native, vb)
+    }
+}
+
+class Sprite extends Component {
+    vb = null
+    native = null
+
+    constructor(node, image, width, height) {
+        super(node)
+
+        this.vb = this.createData(width, height)
+        this.native = globalThis.addRenderer(node.id(), this.vb, image)
+    }
+
+    createData(width, height) {
+        width *= .5
+        height *= .5
+        let array = [
+            -width, -height, 0, 0,  //0
+             width, -height, 1, 0,  //1
+            -width,  height, 0, 1,  //2
+             width,  height, 1, 1,  //3
+        ]
+        return new Float32Array(array)
+    }
+
+    setSprite(image, width, height) {
+        width *= .5
+        height *= .5
+
+        let vb = this.vb
+        vb[0]  = -width ,vb[1]  = -height
+        vb[4]  =  width ,vb[5]  = -height
+        vb[8]  = -width ,vb[9]  =  height
+        vb[12] =  width ,vb[13] =  height
+
+        globalThis.updateRenderer(this.native, vb)
     }
 }
 
@@ -145,21 +217,11 @@ let camera = null
 var init = function () {
     beginScene()
 
-    camera = root.addChild()
-    new Camera(camera)
-
     let node = root.addChild()
-    new Sprite(node, 'image.ktx2', 200, 200)
+    camera = new Camera(node)
 
-    let child = node.addChild()
-    new Sprite(child, 'image.ktx2', 200, 200)
-
-    child.position.x = 300
-
-    let child1 = child.addChild()
-    new Sprite(child1, 'image.ktx2', 200, 200)
-
-    child1.position.y = 300
+    node = root.addChild()
+    new Sprite(node, 'image.ktx2', 192, 194)
 }
 
 function abs(num) {
@@ -169,7 +231,7 @@ function abs(num) {
 var input = { x: 0, y: 0, state: 3 }
 
 var resizeView = function (width, height) {
-    camera.components[0].resize(width, height)
+    camera.resize(width, height)
 }
 
 var transformBuffer = null
@@ -195,27 +257,15 @@ var t = 0
 
 var update = function (dt) {
     let a = []
+    t += dt * 100
 
     let target0 = root.children[1]
     target0.rotation.z += .01
 
+    target0.components[0].setSprite(null, abs((t % 200) - 100), abs((t % 200) - 100))
     a.push(target0)
 
-    let target1 = target0.children[0]
-    target1.rotation.z += .01
-    target1.components[0].setSprite(null, abs((t % 200) - 100), abs((t % 200) - 100))
-
-    a.push(target1)
-
-    let target2 = target1.children[0]
-    t += dt * 100
-    target2.position.y = abs((t % 1000) - 500)
-    
-
-    a.push(target2)
-
     a.length > 0 && sendUpdateTransform(a)
-    //    log(dt)
 }
 
 init()

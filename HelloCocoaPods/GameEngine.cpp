@@ -52,23 +52,13 @@ using namespace utils;
 //    filament::math::float2 uv;
 //};
 
-struct Input {
-    uint32_t x;
-    uint32_t y;
-    int state;
-};
-
 Engine* engine;
 Renderer* renderer;
 View* view;
 SwapChain* swapChain;
-VertexBuffer* vb;
 
 JSGlobalContextRef globalContext;
-JSObjectRef updateLoop;
-JSObjectRef resizeView;
 double current_time;
-Input input;
 
 GameEngine::~GameEngine(){
     engine->destroyCameraComponent(view->getCamera().getEntity());
@@ -99,7 +89,7 @@ string JSValueToStdString(JSContextRef context, JSValueRef jsValue) {
 }
 
 JSCALLBACK(log){
-    for (int i = 0; i < argumentCount; i++) {
+    for (uint8_t i = 0; i < argumentCount; i++) {
         cout << JSValueToStdString(ctx, arguments[i]) << ' ';
     };
     cout << endl;
@@ -144,10 +134,14 @@ Texture* loadImage(string filename) {
             ktxreader::Ktx2Reader::TransferFunction::sRGB);
 }
 
-JSCALLBACK(updatteMaterial) {
-    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
-    void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, 64, nullptr));
+JSCALLBACK(updateRenderer) {
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    VertexBuffer* vb = static_cast<VertexBuffer*>(data);
+
+    array = JSValueToObject(ctx, arguments[1], nullptr);
+    data = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, 64, nullptr));
     
     return arguments[0];
 }
@@ -156,51 +150,56 @@ JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
     
-//    float width = JSValueToNumber(ctx, arguments[1], nullptr) * .5f;
-//    float height = JSValueToNumber(ctx, arguments[2], nullptr) * .5f;
-    
-//    const Vertex* VERTICES = new Vertex[4] {
-//        {{-width, -height}, {0, 0}},
-//        {{ width, -height}, {1, 0}},
-//        {{-width,  height}, {0, 1}},
-//        {{ width,  height}, {1, 1}},
-//    };
-    
-//    const float* VERTICES = new float[16] {
-//        -width, -height, 0, 0,
-//         width, -height, 1, 0,
-//        -width,  height, 0, 1,
-//         width,  height, 1, 1,
-//    };
-    
     JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-//    Float32* VERTICES = reinterpret_cast<Float32*>(buffer);
 
-    static constexpr uint16_t INDICES[6] = { 0, 1, 2, 3, 2, 1 };
+    static IndexBuffer *ib, *ib_9;
+    static Material *mat;
+    
+    if(mat == nullptr) {
+        static constexpr uint16_t INDICES[6] = { 0, 1, 2, 3, 2, 1 };
+        static constexpr uint16_t INDICES_9[54] = {
+             0,  1,  2,  3,  2,  1,
+             1,  4,  3,  6,  3,  4,
+             4,  5,  6,  7,  6,  5,
+            10, 11,  0,  1,  0, 11,
+            11, 14,  1,  4,  1, 14,
+            14, 15,  4,  5,  4, 15,
+             8,  9, 10, 11, 10,  9,
+             9, 12, 11, 14, 11, 12,
+            12, 13, 14, 15, 14, 13,
+        };
 
-    // This file is compiled via the matc tool. See the "Run Script" build phase.
-    static constexpr uint8_t BAKED_COLOR_PACKAGE[] = {
-        #include "bakedColor.inc"
-    };
+        // This file is compiled via the matc tool. See the "Run Script" build phase.
+        constexpr uint8_t BAKED_COLOR_PACKAGE[] = {
+            #include "bakedColor.inc"
+        };
+        
+        mat = Material::Builder()
+            .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
+            .build(*engine);
+        
+        ib = IndexBuffer::Builder()
+            .indexCount(6)
+            .bufferType(IndexBuffer::IndexType::USHORT)
+            .build(*engine);
+        ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, 12, nullptr));
+        
+        ib_9 = IndexBuffer::Builder()
+            .indexCount(54)
+            .bufferType(IndexBuffer::IndexType::USHORT)
+            .build(*engine);
+        ib_9->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_9, 108, nullptr));
+    }
     
-    static Material* const mat = Material::Builder()
-        .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
-        .build(*engine);
-    
-    vb = VertexBuffer::Builder()
-        .vertexCount(4)
+    VertexBuffer* vb = VertexBuffer::Builder()
+        .vertexCount((uint32_t)count / 4)
         .bufferCount(1)
         .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 16)
         .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 8, 16)
         .build(*engine);
-    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, 64, nullptr));
-
-    static IndexBuffer* const ib = IndexBuffer::Builder()
-        .indexCount(6)
-        .bufferType(IndexBuffer::IndexType::USHORT)
-        .build(*engine);
-    ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, 12, nullptr));
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, count * 4, nullptr));
 
     auto matInstance = mat->createInstance();
     if(argumentCount > 2) {
@@ -217,14 +216,14 @@ JSCALLBACK(addRenderer){
         .castShadows(false)
         .build(*engine, entity);
     
-    return arguments[0];
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, vb, sizeof(vb), nullptr, nullptr, nullptr);;
 }
 
 JSCALLBACK(updateTransforms){
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
     size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-    Float32* d = reinterpret_cast<Float32*>(buffer);
+    Float32* d = static_cast<Float32*>(buffer);
 
 //    cout << count << endl;
     size_t strike = 10;
@@ -233,16 +232,14 @@ JSCALLBACK(updateTransforms){
     auto& tcm = engine->getTransformManager();
     tcm.openLocalTransformTransaction();
     
-    for (unsigned int i = 0; i < count; i += strike) {
+    for (uint32_t i = 0; i < count; i += strike) {
         uint32_t id = d[i];
         
         filament::math::float3 pos {d[i + 1], d[i + 2], d[i + 3] };
         filament::math::float3 rot {d[i + 4], d[i + 5], d[i + 6] };
         filament::math::float3 scl {d[i + 7], d[i + 8], d[i + 9] };
-
-        Entity e = Entity::import(id);
         
-        tcm.setTransform(tcm.getInstance(e),
+        tcm.setTransform(tcm.getInstance(Entity::import(id)),
             filament::math::mat4f::translation(pos) *
             filament::math::mat4f::eulerZYX(rot.z, rot.y, rot.x) *
             filament::math::mat4f::scaling(scl));
@@ -301,15 +298,22 @@ JSObjectRef getScriptFunction(const char* name, JSObjectRef thisObject){
     return JSValueToObject(globalContext, func, nullptr);
 }
 
-void GameEngine::input(uint32_t x, uint32_t y, int32_t state) {
-    JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
-    cout<< state << endl;
+void GameEngine::input(uint16_t x, uint16_t y, int16_t state) {
+//    cout<< state << endl;
     
-    JSStringRef inputStr = JSStringCreateWithUTF8CString("input");
-    static const JSStringRef xStr = JSStringCreateWithUTF8CString("x");
-    static const JSStringRef yStr = JSStringCreateWithUTF8CString("y");
-    static const JSStringRef stateStr = JSStringCreateWithUTF8CString("state");
-    static const JSObjectRef input = JSValueToObject(globalContext, JSObjectGetProperty(globalContext, globalObject, inputStr, nullptr), nullptr);
+    static JSStringRef xStr, yStr, stateStr;
+    static JSObjectRef input;
+    
+    if(input == nullptr) {
+        JSStringRef inputStr = JSStringCreateWithUTF8CString("input");
+        JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
+        xStr = JSStringCreateWithUTF8CString("x");
+        yStr = JSStringCreateWithUTF8CString("y");
+        stateStr = JSStringCreateWithUTF8CString("state");
+        input = JSValueToObject(globalContext, JSObjectGetProperty(globalContext, globalObject, inputStr, nullptr), nullptr);
+        
+        JSStringRelease(inputStr);
+    }
     
     JSObjectSetProperty(globalContext, input, xStr, JSValueMakeNumber(globalContext, x), kJSPropertyAttributeNone, nullptr);
     JSObjectSetProperty(globalContext, input, yStr, JSValueMakeNumber(globalContext, y), kJSPropertyAttributeNone, nullptr);
@@ -332,21 +336,20 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("addRenderer", addRenderer, globalObject);
     registerNativeFunction("updateTransforms", updateTransforms, globalObject);
     registerNativeFunction("updateCamera", updateCamera, globalObject);
+    registerNativeFunction("updateRenderer", updateRenderer, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + filename) << endl;
     ifstream file(parent + "bundle.js");
     ostringstream buffer;
     buffer << file.rdbuf();
+    file.close();
     
     JSStringRef script = JSStringCreateWithUTF8CString(buffer.str().c_str());
 //    JSStringRef script = JSStringCreateWithUTF8CString(source);
     JSValueRef exception = nullptr;
     JSEvaluateScript(globalContext, script, nullptr, nullptr, 0, &exception);
     if(exception) cout << JSValueToStdString(globalContext, exception);
-    
-    updateLoop = getScriptFunction("update", globalObject);
-    resizeView = getScriptFunction("resizeView", globalObject);
 
     JSStringRelease(script);
 }
@@ -362,17 +365,34 @@ void GameEngine::update(double now){
     JSValueRef dt = JSValueMakeNumber(globalContext, now - current_time);
     current_time = now;
     
-    JSObjectCallAsFunction(globalContext, updateLoop, nullptr, 1, &dt, nullptr);
+    static JSObjectRef updateLoop;
+    
+    if(updateLoop == nullptr) {
+        JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
+        updateLoop = getScriptFunction("update", globalObject);
+    }
+    
+    JSValueRef exception = nullptr;
+    JSObjectCallAsFunction(globalContext, updateLoop, nullptr, 1, &dt, &exception);
+    if(exception) cout << JSValueToStdString(globalContext, exception);
+    
     render();
 }
 
-void GameEngine::resize(uint32_t width, uint32_t height){
+void GameEngine::resize(uint16_t width, uint16_t height){
     view->setViewport({0, 0, width, height});
     
     JSValueRef args[2] {
         JSValueMakeNumber(globalContext, width),
         JSValueMakeNumber(globalContext, height)
     };
+    
+    static JSObjectRef resizeView;
+    
+    if(resizeView == nullptr) {
+        JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
+        resizeView = getScriptFunction("resizeView", globalObject);
+    }
     
     JSObjectCallAsFunction(globalContext, resizeView, nullptr, 2, args, nullptr);
 }
