@@ -1,39 +1,45 @@
 PODS:
-  - Filament (1.23.0):
-    - Filament/camutils (= 1.23.0)
-    - Filament/filamat (= 1.23.0)
-    - Filament/filament (= 1.23.0)
-    - Filament/filameshio (= 1.23.0)
-    - Filament/gltfio_core (= 1.23.0)
-    - Filament/image (= 1.23.0)
-    - Filament/ktxreader (= 1.23.0)
-    - Filament/math (= 1.23.0)
-    - Filament/tsl (= 1.23.0)
-    - Filament/utils (= 1.23.0)
-    - Filament/viewer (= 1.23.0)
-  - Filament/camutils (1.23.0):
+  - Filament (1.25.3):
+    - Filament/camutils (= 1.25.3)
+    - Filament/filamat (= 1.25.3)
+    - Filament/filament (= 1.25.3)
+    - Filament/filameshio (= 1.25.3)
+    - Filament/gltfio_core (= 1.25.3)
+    - Filament/image (= 1.25.3)
+    - Filament/ktxreader (= 1.25.3)
+    - Filament/math (= 1.25.3)
+    - Filament/tsl (= 1.25.3)
+    - Filament/uberz (= 1.25.3)
+    - Filament/utils (= 1.25.3)
+    - Filament/viewer (= 1.25.3)
+  - Filament/camutils (1.25.3):
     - Filament/math
-  - Filament/filamat (1.23.0):
-    - Filament/math
-    - Filament/utils
-  - Filament/filament (1.23.0):
+  - Filament/filamat (1.25.3):
     - Filament/math
     - Filament/utils
-  - Filament/filameshio (1.23.0):
+  - Filament/filament (1.25.3):
+    - Filament/math
+    - Filament/utils
+  - Filament/filameshio (1.25.3):
     - Filament/filament
-  - Filament/gltfio_core (1.23.0):
+  - Filament/gltfio_core (1.25.3):
     - Filament/filament
     - Filament/ktxreader
-  - Filament/image (1.23.0):
+    - Filament/uberz
+  - Filament/image (1.25.3):
     - Filament/filament
-  - Filament/ktxreader (1.23.0):
+  - Filament/ktxreader (1.25.3):
     - Filament/filament
     - Filament/image
-  - Filament/math (1.23.0)
-  - Filament/tsl (1.23.0)
-  - Filament/utils (1.23.0):
+  - Filament/math (1.25.3)
+  - Filament/tsl (1.25.3)
+  - Filament/uberz (1.25.3):
+    - Filament/filamat
     - Filament/tsl
-  - Filament/viewer (1.23.0):
+    - Filament/utils
+  - Filament/utils (1.25.3):
+    - Filament/tsl
+  - Filament/viewer (1.25.3):
     - Filament/filament
     - Filament/gltfio_core
 
@@ -45,7 +51,7 @@ SPEC REPOS:
     - Filament
 
 SPEC CHECKSUMS:
-  Filament: e4ec9bff617c4dac2e8b9dd257856009cb65deb6
+  Filament: 13177eda7f5b855d7825afcdeda0d873a9bd820f
 
 PODFILE CHECKSUM: c3cd425c8e99e099e91283d0343aff2ef86e0a39
 

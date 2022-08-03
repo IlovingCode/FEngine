@@ -6,7 +6,7 @@ material {
             name : texture
         },
         {
-            type : float3,
+            type : float4,
             name : baseColor
         }
     ],
