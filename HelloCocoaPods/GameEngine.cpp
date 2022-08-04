@@ -364,21 +364,21 @@ void render(){
 }
 
 void GameEngine::update(double now){
-    JSValueRef dt = JSValueMakeNumber(globalContext, now - current_time);
-    current_time = now;
+//    JSValueRef dt = JSValueMakeNumber(globalContext, now - current_time);
+//    current_time = now;
+//    
+//    static JSObjectRef updateLoop;
+//    
+//    if(updateLoop == nullptr) {
+//        JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
+//        updateLoop = getScriptFunction("update", globalObject);
+//    }
+//    
+//    JSValueRef exception = nullptr;
+//    JSObjectCallAsFunction(globalContext, updateLoop, nullptr, 1, &dt, &exception);
+//    if(exception) cout << JSValueToStdString(globalContext, exception);
     
-    static JSObjectRef updateLoop;
-    
-    if(updateLoop == nullptr) {
-        JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
-        updateLoop = getScriptFunction("update", globalObject);
-    }
-    
-    JSValueRef exception = nullptr;
-    JSObjectCallAsFunction(globalContext, updateLoop, nullptr, 1, &dt, &exception);
-    if(exception) cout << JSValueToStdString(globalContext, exception);
-    
-    render();
+//     render();
 }
 
 void GameEngine::resize(uint16_t width, uint16_t height){

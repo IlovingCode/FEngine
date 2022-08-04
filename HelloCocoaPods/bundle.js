@@ -1,5 +1,19 @@
 // test
 
+class Vec4 {
+    x = 0
+    y = 0
+    z = 0
+    w = 0
+
+    constructor(x, y, z, w) {
+        this.x = x
+        this.y = y
+        this.z = z
+        this.w = w
+    }
+}
+
 class Vec3 {
     x = 0
     y = 0
@@ -9,6 +23,16 @@ class Vec3 {
         this.x = x
         this.y = y
         this.z = z
+    }
+}
+
+class Vec2 {
+    x = 0
+    y = 0
+
+    constructor(x, y) {
+        this.x = x
+        this.y = y
     }
 }
 
@@ -90,6 +114,24 @@ class Camera extends Component {
         width = fit_width ? ZOOM : (ZOOM * aspect)
         height = fit_width ? (ZOOM / aspect) : ZOOM
         globalThis.updateCamera(this.node.id(), width, height)
+    }
+}
+
+class BoundBox2D extends Component {
+    size = null
+    anchor = null
+
+    constructor(node, size, anchor) {
+        super(node)
+
+        this.size = size
+        this.anchor = anchor
+    }
+}
+
+class Mask extends Component {
+    constructor(node, size, anchor) {
+        
     }
 }
 
@@ -256,7 +298,7 @@ var update = function (dt) {
     let target0 = root.children[1]
     target0.rotation.z += .01
 
-    target0.components[0].setSprite(null, 200 + Math.abs((t % 100) - 50), 200 + Math.abs((t % 100) - 50))
+    target0.components[0].setSprite(null, 500 + Math.abs((t % 100) - 50), 500 + Math.abs((t % 100) - 50))
     a.push(target0)
 
     a.length > 0 && sendUpdateTransform(a)
