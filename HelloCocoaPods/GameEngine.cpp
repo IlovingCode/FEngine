@@ -147,6 +147,34 @@ JSCALLBACK(updateRenderer) {
     return arguments[0];
 }
 
+JSCALLBACK(updateScissor) {
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    uint32_t* d = static_cast<uint32_t*>(buffer);
+    
+    uint32_t left = 0, bottom = 0, width = 0, height = 0;
+    if(argumentCount > 1) {
+        left = JSValueToNumber(ctx, arguments[1], nullptr);
+        bottom = JSValueToNumber(ctx, arguments[2], nullptr);
+        width = JSValueToNumber(ctx, arguments[3], nullptr);
+        height = JSValueToNumber(ctx, arguments[4], nullptr);
+    }
+
+    cout << count << endl;
+    auto& rm = engine->getRenderableManager();
+    
+    for (uint32_t i = 0; i < count; i++) {
+        MaterialInstance* material = rm.getMaterialInstanceAt(rm.getInstance(Entity::import(d[i])), 0);
+    
+        if(argumentCount > 1) material->setScissor(left, bottom, width, height);
+        else material->unsetScissor();
+    }
+    
+    return arguments[0];
+}
+
+
 JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
@@ -339,6 +367,7 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("updateTransforms", updateTransforms, globalObject);
     registerNativeFunction("updateCamera", updateCamera, globalObject);
     registerNativeFunction("updateRenderer", updateRenderer, globalObject);
+    registerNativeFunction("updateScissor", updateScissor, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + filename) << endl;
@@ -364,21 +393,21 @@ void render(){
 }
 
 void GameEngine::update(double now){
-//    JSValueRef dt = JSValueMakeNumber(globalContext, now - current_time);
-//    current_time = now;
-//    
-//    static JSObjectRef updateLoop;
-//    
-//    if(updateLoop == nullptr) {
-//        JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
-//        updateLoop = getScriptFunction("update", globalObject);
-//    }
-//    
-//    JSValueRef exception = nullptr;
-//    JSObjectCallAsFunction(globalContext, updateLoop, nullptr, 1, &dt, &exception);
-//    if(exception) cout << JSValueToStdString(globalContext, exception);
+    JSValueRef dt = JSValueMakeNumber(globalContext, now - current_time);
+    current_time = now;
     
-//     render();
+    static JSObjectRef updateLoop;
+    
+    if(updateLoop == nullptr) {
+        JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
+        updateLoop = getScriptFunction("update", globalObject);
+    }
+    
+    JSValueRef exception = nullptr;
+    JSObjectCallAsFunction(globalContext, updateLoop, nullptr, 1, &dt, &exception);
+    if(exception) cout << JSValueToStdString(globalContext, exception);
+    
+    render();
 }
 
 void GameEngine::resize(uint16_t width, uint16_t height){
