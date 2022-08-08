@@ -78,7 +78,7 @@ class Node {
     }
 
     getComponent(prototype) {
-        for (let i of this.children) if (i instanceof prototype) return i
+        for (let i of this.components) if (i instanceof prototype) return i
     }
 
     toArray = function () {
@@ -208,7 +208,6 @@ class Mask extends Component {
         let nodes = [this.node]
         while (nodes.length > 0) {
             let p = nodes.shift()
-            log(p.getComponent(SpriteSimple))
             if (p.getComponent(SpriteSimple) || p.getComponent(SpriteSliced))
                 array.push(p.id())
 

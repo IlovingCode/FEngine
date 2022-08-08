@@ -161,9 +161,7 @@ JSCALLBACK(updateScissor) {
         height = JSValueToNumber(ctx, arguments[4], nullptr);
     }
 
-    cout << count << endl;
     auto& rm = engine->getRenderableManager();
-    
     for (uint32_t i = 0; i < count; i++) {
         MaterialInstance* material = rm.getMaterialInstanceAt(rm.getInstance(Entity::import(d[i])), 0);
     
