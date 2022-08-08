@@ -118,6 +118,32 @@ JSCALLBACK(createEntity){
     return JSValueMakeNumber(ctx, Entity::smuggle(e));
 }
 
+JSCALLBACK(getWorldTransform){
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+//    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    Float32* d = static_cast<Float32*>(buffer);
+    
+    auto& tcm = engine->getTransformManager();
+    Entity parent = Entity::import(d[0]);
+    
+    const math::mat4f world = tcm.getWorldTransform(tcm.getInstance(parent));
+    
+    d[1] = world[0][3];
+    d[2] = world[1][3];
+    d[3] = world[2][3];
+    
+    d[1] = world[0][3];
+    d[2] = world[1][3];
+    d[3] = world[2][3];
+    
+    d[1] = world[0][3];
+    d[2] = world[1][3];
+    d[3] = world[2][3];
+    
+    return nullptr;
+}
+
 Texture* loadImage(string filename) {
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + filename) << endl;
