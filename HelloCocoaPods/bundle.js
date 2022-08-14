@@ -55,9 +55,11 @@ class Node {
     children = []
     components = []
     native = new Float32Array(new ArrayBuffer(40))
+    nativeWorld = new Float32Array(new ArrayBuffer(40))
 
     constructor(id = -1) {
         this.native[0] = id
+        this.nativeWorld[0] = id
     }
 
     id() { return this.native[0] }
@@ -79,6 +81,10 @@ class Node {
 
     getComponent(prototype) {
         for (let i of this.components) if (i instanceof prototype) return i
+    }
+
+    updateWorld() {
+        return globalThis.getWorldTransform(this.nativeWorld)
     }
 
     toArray = function () {
@@ -153,6 +159,9 @@ class BoundBox2D extends Component {
     }
 
     update(width, height, anchorX, anchorY) {
+        let array = this.node.updateWorld()
+        log(array)
+
         this.top = height * (1. - anchorY)
         this.bottom = -height * anchorY
         this.left = -width * anchorX
@@ -372,7 +381,7 @@ var init = function () {
     // new SpriteSliced(node, 'image.ktx2', 192, 194, 80, 80, 80, 80)
     new SpriteSimple(node, 'image.ktx2', 192, 194)
 
-    new Mask(root, 100, 100)
+    new Mask(root, 500, 500)
 }
 
 var input = { x: 0, y: 0, state: 3 }

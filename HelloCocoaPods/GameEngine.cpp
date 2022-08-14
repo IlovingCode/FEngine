@@ -33,6 +33,8 @@
 #include <utils/Path.h>
 #include <utils/EntityManager.h>
 
+#include <gltfio/math.h>
+
 #include <JavaScriptCore/JavaScriptCore.h>
 #include <iostream>
 #include <sstream>
@@ -46,11 +48,6 @@
 using namespace std;
 using namespace filament;
 using namespace utils;
-
-//struct Vertex {
-//    filament::math::float2 position;
-//    filament::math::float2 uv;
-//};
 
 Engine* engine;
 Renderer* renderer;
@@ -118,6 +115,20 @@ JSCALLBACK(createEntity){
     return JSValueMakeNumber(ctx, Entity::smuggle(e));
 }
 
+math::float3 eulerAngles(math::quatf q) {
+    math::quatf nq = normalize(q);
+    return math::float3 {
+            // roll (x-axis rotation)
+            (atan2(2.0f * (nq.y * nq.z + nq.w * nq.x),
+                nq.w * nq.w - nq.x * nq.x - nq.y * nq.y + nq.z * nq.z)),
+            // pitch (y-axis rotation)
+            (asin(-2.0f * (nq.x * nq.z - nq.w * nq.y))),
+            // yaw (z-axis rotation)
+            (atan2(2.0f * (nq.x * nq.y + nq.w * nq.z),
+                nq.w * nq.w + nq.x * nq.x - nq.y * nq.y - nq.z * nq.z))
+    };
+}
+
 JSCALLBACK(getWorldTransform){
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
 //    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
@@ -129,19 +140,26 @@ JSCALLBACK(getWorldTransform){
     
     const math::mat4f world = tcm.getWorldTransform(tcm.getInstance(parent));
     
-    d[1] = world[0][3];
-    d[2] = world[1][3];
-    d[3] = world[2][3];
+    math::float3 translation, scale, rotation;
+    math::quatf quaternion;
     
-    d[1] = world[0][3];
-    d[2] = world[1][3];
-    d[3] = world[2][3];
+    gltfio::decomposeMatrix(world, &translation, &quaternion, &scale);
     
-    d[1] = world[0][3];
-    d[2] = world[1][3];
-    d[3] = world[2][3];
+    rotation = eulerAngles(quaternion);
     
-    return nullptr;
+    d[1] = translation.x;
+    d[2] = translation.y;
+    d[3] = translation.z;
+
+    d[4] = scale.x;
+    d[5] = scale.y;
+    d[6] = scale.z;
+    
+    d[7] = rotation.x;
+    d[8] = rotation.y;
+    d[9] = rotation.z;
+    
+    return arguments[0];
 }
 
 Texture* loadImage(string filename) {
@@ -190,7 +208,7 @@ JSCALLBACK(updateScissor) {
     auto& rm = engine->getRenderableManager();
     for (uint32_t i = 0; i < count; i++) {
         MaterialInstance* material = rm.getMaterialInstanceAt(rm.getInstance(Entity::import(d[i])), 0);
-    
+        
         if(argumentCount > 1) material->setScissor(left, bottom, width, height);
         else material->unsetScissor();
     }
@@ -289,14 +307,14 @@ JSCALLBACK(updateTransforms){
     for (uint32_t i = 0; i < count; i += strike) {
         uint32_t id = d[i];
         
-        filament::math::float3 pos {d[i + 1], d[i + 2], d[i + 3] };
-        filament::math::float3 rot {d[i + 4], d[i + 5], d[i + 6] };
-        filament::math::float3 scl {d[i + 7], d[i + 8], d[i + 9] };
+        math::float3 pos { d[i + 1], d[i + 2], d[i + 3] };
+        math::float3 rot { d[i + 4], d[i + 5], d[i + 6] };
+        math::float3 scl { d[i + 7], d[i + 8], d[i + 9] };
         
         tcm.setTransform(tcm.getInstance(Entity::import(id)),
-            filament::math::mat4f::translation(pos) *
-            filament::math::mat4f::eulerZYX(rot.z, rot.y, rot.x) *
-            filament::math::mat4f::scaling(scl));
+            math::mat4f::translation(pos) *
+            math::mat4f::eulerZYX(rot.z, rot.y, rot.x) *
+            math::mat4f::scaling(scl));
     }
     
     tcm.commitLocalTransformTransaction();
@@ -375,7 +393,7 @@ void GameEngine::input(uint16_t x, uint16_t y, int16_t state) {
 }
 
 GameEngine::GameEngine(void* nativeWindow){
-    engine = Engine::create(filament::Engine::Backend::METAL);
+    engine = Engine::create(Engine::Backend::METAL);
     swapChain = engine->createSwapChain(nativeWindow);
     renderer = engine->createRenderer();
     view = engine->createView();
@@ -392,6 +410,7 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("updateCamera", updateCamera, globalObject);
     registerNativeFunction("updateRenderer", updateRenderer, globalObject);
     registerNativeFunction("updateScissor", updateScissor, globalObject);
+    registerNativeFunction("getWorldTransform", getWorldTransform, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + filename) << endl;
