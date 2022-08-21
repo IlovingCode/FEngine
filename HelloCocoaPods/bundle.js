@@ -141,6 +141,7 @@ class Camera extends Component {
 
 class BoundBox2D extends Component {
     size = null
+    pivot = null
     anchor = null
     onSizeChanged = null
 
@@ -149,28 +150,29 @@ class BoundBox2D extends Component {
     left = 0
     right = 0
 
-    constructor(node, size, anchor) {
+    constructor(node, size, pivot, anchor) {
         super(node)
 
         this.size = size
+        this.pivot = pivot
         this.anchor = anchor
 
-        this.update(size.x, size.y, anchor.x, anchor.y)
+        this.update(size.x, size.y, pivot.x, pivot.y)
     }
 
-    update(width, height, anchorX, anchorY) {
-        let array = this.node.updateWorld()
-        log(array)
+    update(width, height, pivotX, pivotY) {
+        // let array = this.node.updateWorld()
+        // log(array)
 
-        this.top = height * (1. - anchorY)
-        this.bottom = -height * anchorY
-        this.left = -width * anchorX
-        this.right = width * (1. - anchorX)
+        this.top = height * (1. - pivotY)
+        this.bottom = -height * pivotY
+        this.left = -width * pivotX
+        this.right = width * (1. - pivotX)
     }
 
-    set(width = -1, height = -1, anchorX = -1, anchorY = -1) {
+    set(width = -1, height = -1, pivotX = -1, pivotY = -1) {
         let size = this.size
-        let anchor = this.anchor
+        let pivot = this.pivot
 
         if (width < 0) width = size.x
         else if (width == 0) width = height * size.x / size.y
@@ -178,54 +180,55 @@ class BoundBox2D extends Component {
         if (height < 0) height = size.y
         else if (height == 0) height = width * size.y / size.x
 
-        if (anchorX < 0) anchorX = anchor.x
-        else anchorX = Math.min(anchorX, 1)
+        if (pivotX < 0) pivotX = pivot.x
+        else pivotX = Math.min(pivotX, 1)
 
-        if (anchorY < 0) anchorY = anchor.y
-        else anchorY = Math.min(anchorY, 1)
+        if (pivotY < 0) pivotY = pivot.y
+        else pivotY = Math.min(pivotY, 1)
 
         size.x = width
         size.y = height
-        anchor.x = anchorX
-        anchor.y = anchorY
+        pivot.x = pivotX
+        pivot.y = pivotY
 
-        return this.update(width, height, anchorX, anchorY)
+        return this.update(width, height, pivotX, pivotY)
     }
 }
 
-class Mask extends Component {
-    bound = null
+// class FastMask extends Component {
+//     bound = null
 
-    constructor(node, width, height) {
-        super(node)
+//     constructor(node, width, height) {
+//         super(node)
 
-        let bound = node.getComponent(BoundBox2D)
-        if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
+//         let bound = node.getComponent(BoundBox2D)
+//         if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
+//         else bound.set(width, height)
 
-        this.bound = bound
+//         this.bound = bound
+    
+//         this.set(bound)
+//     }
 
-        this.set(bound)
-    }
+//     set(bound) {
+//         let left = bound.left
+//         let bottom = bound.bottom
+//         let width = bound.right - left
+//         let height = bound.top - bottom
 
-    set(bound) {
-        let left = bound.left
-        let bottom = bound.bottom
-        let width = bound.right - left
-        let height = bound.top - bottom
-        let array = []
+//         let array = []
+//         let nodes = [this.node]
+//         while (nodes.length > 0) {
+//             let p = nodes.shift()
+//             if (p.getComponent(SpriteSimple) || p.getComponent(SpriteSliced))
+//                 array.push(p.id())
 
-        let nodes = [this.node]
-        while (nodes.length > 0) {
-            let p = nodes.shift()
-            if (p.getComponent(SpriteSimple) || p.getComponent(SpriteSliced))
-                array.push(p.id())
+//             for (let i of p.children) nodes.push(i)
+//         }
 
-            for (let i of p.children) nodes.push(i)
-        }
-
-        globalThis.updateScissor(new Uint32Array(array), left, bottom, width, height)
-    }
-}
+//         globalThis.updateScissor(new Uint32Array(array), left, bottom, width, height)
+//     }
+// }
 
 class SpriteSimple extends Component {
     vb = null
@@ -243,6 +246,10 @@ class SpriteSimple extends Component {
 
         this.vb = this.createData()
         this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image)
+    }
+
+    setMask(enabled) {
+        globalThis.updateMaterial(this.node.id(), enabled)
     }
 
     createData() {
@@ -299,6 +306,10 @@ class SpriteSliced extends Component {
 
         this.vb = this.createData()
         this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image)
+    }
+
+    setMask(enabled) {
+        globalThis.updateMaterial(this.node.id(), enabled)
     }
 
     createData() {
@@ -375,13 +386,23 @@ var init = function () {
     beginScene()
 
     let node = root.addChild()
+    node.position.z = 1
     camera = new Camera(node)
 
     node = root.addChild()
-    // new SpriteSliced(node, 'image.ktx2', 192, 194, 80, 80, 80, 80)
-    new SpriteSimple(node, 'image.ktx2', 192, 194)
+    let bg = new SpriteSimple(node, 'image.ktx2', 2000, 2000)
+    bg.setMask(true)
 
-    new Mask(root, 500, 500)
+    node = root.addChild()
+    node.position.z = -.1
+    let mask = new SpriteSimple(node, 'image.ktx2', 50, 50)
+    mask.setMask(true)
+
+    node = node.addChild()
+    new SpriteSliced(node, 'image.ktx2', 192, 194, 80, 80, 80, 80)
+    // new SpriteSimple(node, 'image.ktx2', 192, 194)
+
+    sendUpdateTransform([camera.node, mask.node])
 }
 
 var input = { x: 0, y: 0, state: 3 }
@@ -415,7 +436,7 @@ var update = function (dt) {
     let a = []
     t += dt * 100
 
-    let target0 = root.children[1]
+    let target0 = root.children[2].children[0]
     target0.rotation.z += .01
 
     a.push(target0)

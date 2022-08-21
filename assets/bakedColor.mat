@@ -14,7 +14,7 @@ material {
         uv0
     ],
     shadingModel : unlit,
-    blending: transparent,
+    blending : masked,
     culling : none
 }
 

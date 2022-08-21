@@ -74,15 +74,16 @@ GameEngine::~GameEngine(){
 }
 
 string JSValueToStdString(JSContextRef context, JSValueRef jsValue) {
-    
-    JSStringRef jsString = JSValueToStringCopy(context, jsValue, nullptr);
+    JSValueRef error = nullptr;
+    JSStringRef jsString = JSValueToStringCopy(context, jsValue, &error);
     size_t maxBufferSize = JSStringGetMaximumUTF8CStringSize(jsString);
     char* utf8Buffer = new char[maxBufferSize];
     size_t bytesWritten = JSStringGetUTF8CString(jsString, utf8Buffer, maxBufferSize);
-    string utf_string = string(utf8Buffer, bytesWritten -1); // the last byte is a null \0 which std::string doesn't need.
+    
+    string utf_string = string(utf8Buffer, bytesWritten - 1); // the last byte is a null \0 which std::string doesn't need.
     JSStringRelease(jsString);
     delete [] utf8Buffer;
-    return utf_string;
+    return utf_string.compare("null") == 0 ? "" : utf_string;
 }
 
 JSCALLBACK(log){
@@ -191,31 +192,44 @@ JSCALLBACK(updateRenderer) {
     return arguments[0];
 }
 
-JSCALLBACK(updateScissor) {
-    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
-    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
-    void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-    uint32_t* d = static_cast<uint32_t*>(buffer);
+JSCALLBACK(updateMaterial) {
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    bool isMask = JSValueToBoolean(ctx, arguments[1]);
     
-    uint32_t left = 0, bottom = 0, width = 0, height = 0;
-    if(argumentCount > 1) {
-        left = JSValueToNumber(ctx, arguments[1], nullptr);
-        bottom = JSValueToNumber(ctx, arguments[2], nullptr);
-        width = JSValueToNumber(ctx, arguments[3], nullptr);
-        height = JSValueToNumber(ctx, arguments[4], nullptr);
-    }
-
     auto& rm = engine->getRenderableManager();
-    for (uint32_t i = 0; i < count; i++) {
-        MaterialInstance* material = rm.getMaterialInstanceAt(rm.getInstance(Entity::import(d[i])), 0);
-        
-        if(argumentCount > 1) material->setScissor(left, bottom, width, height);
-        else material->unsetScissor();
-    }
-    
+    MaterialInstance* material = rm.getMaterialInstanceAt(rm.getInstance(Entity::import(id)), 0);
+
+    material->setDepthWrite(isMask);
+    material->setDepthCulling(!isMask);
+    material->setColorWrite(!isMask);
+
     return arguments[0];
 }
 
+//JSCALLBACK(updateScissor) {
+//    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+//    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+//    void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+//    uint32_t* d = static_cast<uint32_t*>(buffer);
+//
+//    uint32_t left = 0, bottom = 0, width = 0, height = 0;
+//    if(argumentCount > 1) {
+//        left = JSValueToNumber(ctx, arguments[1], nullptr);
+//        bottom = JSValueToNumber(ctx, arguments[2], nullptr);
+//        width = JSValueToNumber(ctx, arguments[3], nullptr);
+//        height = JSValueToNumber(ctx, arguments[4], nullptr);
+//    }
+//
+//    auto& rm = engine->getRenderableManager();
+//    for (uint32_t i = 0; i < count; i++) {
+//        MaterialInstance* material = rm.getMaterialInstanceAt(rm.getInstance(Entity::import(d[i])), 0);
+//
+//        if(argumentCount > 1) material->setScissor(left, bottom, width, height);
+//        else material->unsetScissor();
+//    }
+//
+//    return arguments[0];
+//}
 
 JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
@@ -273,9 +287,10 @@ JSCALLBACK(addRenderer){
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, count * 4, nullptr));
 
     auto matInstance = mat->createInstance();
+    matInstance->setDepthCulling(true);
     if(argumentCount > 2) {
         string file = JSValueToStdString(ctx, arguments[2]);
-        matInstance->setParameter("texture", loadImage(file), TextureSampler());
+        if(!file.empty()) matInstance->setParameter("texture", loadImage(file), TextureSampler());
     }
 
     auto ib_t = count > 16 ? ib_9 : ib;
@@ -349,7 +364,7 @@ JSCALLBACK(updateCamera){
     const double left   = -right;
     const double bottom = -top;
     const double near   =  0.0;
-    const double far    =  1.0;
+    const double far    =  2.0;
     camera->setProjection(Camera::Projection::ORTHO, left, right, bottom, top, near, far);
     
     return arguments[0];
@@ -409,7 +424,7 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("updateTransforms", updateTransforms, globalObject);
     registerNativeFunction("updateCamera", updateCamera, globalObject);
     registerNativeFunction("updateRenderer", updateRenderer, globalObject);
-    registerNativeFunction("updateScissor", updateScissor, globalObject);
+    registerNativeFunction("updateMaterial", updateMaterial, globalObject);
     registerNativeFunction("getWorldTransform", getWorldTransform, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();
