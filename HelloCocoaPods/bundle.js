@@ -52,6 +52,7 @@ class Node {
     position = new Vec3(0, 0, 0)
     rotation = new Vec3(0, 0, 0)
     scale = new Vec3(1, 1, 1)
+    parent = null
     children = []
     components = []
     native = new Float32Array(new ArrayBuffer(40))
@@ -70,7 +71,9 @@ class Node {
             id = id < 0 ? globalThis.createEntity() : globalThis.createEntity(id)
             node = new Node(id)
         }
+
         this.children.push(node)
+        node.parent = this
 
         return node
     }
@@ -142,20 +145,74 @@ class Camera extends Component {
 class BoundBox2D extends Component {
     size = null
     pivot = null
-    anchor = null
     onSizeChanged = null
+
+    horizontalAlign = 0
+    verticalAlign = 0
+
+    _top = 0
+    _bottom = 0
+    _left = 0
+    _right = 0
 
     top = 0
     bottom = 0
     left = 0
     right = 0
 
-    constructor(node, size, pivot, anchor) {
+    isLeft() { return this.horizontalAlign == -1 || this.horizontalAlign > 1 }
+    isRight() { return this.horizontalAlign >= 1 }
+    isTop() { return this.verticalAlign >= 1 }
+    isBottom() { return this.verticalAlign == -1 || this.verticalAlign > 1 }
+
+    constructor(node, size, pivot) {
         super(node)
 
         this.size = size
         this.pivot = pivot
-        this.anchor = anchor
+
+        this.update(size.x, size.y, pivot.x, pivot.y)
+    }
+
+    setAlignment(horizontal, vertical, top, bottom, left, right) {
+        this.horizontalAlign = horizontal
+        this.verticalAlign = vertical
+
+        let parent = this.node.parent.getComponent(BoundBox2D)
+        let pSize = parent.size
+        let size = this.size
+        let pivot = this.pivot
+
+        if(vertical == 1) {
+            bottom = (top - pSize.y) - parent.bottom
+        }
+
+        if(vertical == -1) {
+            top = parent.top - (bottom + pSize.y)
+        }
+
+        if(horizontal == -1) {
+            right = parent.right - (left + pSize.x)
+        }
+
+        if(horizontal == 1) {
+            left = (right - pSize.x) - parent.left
+        }
+
+        if(horizontal > 1) {
+            size.x = pSize.x - (left + right)
+            this.position.x = ((parent.right - right) - (parent.left + left))
+        }
+
+        if(vertical > 1) {
+            size.y = pSize.y - (top + bottom)
+            this.position.y = ((parent.top - top) - (parent.bottom + bottom))
+        }
+
+        this._top = top
+        this._bottom = bottom
+        this._left = left
+        this._right = right
 
         this.update(size.x, size.y, pivot.x, pivot.y)
     }
