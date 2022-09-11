@@ -57,6 +57,7 @@ class Node {
     components = []
     native = new Float32Array(new ArrayBuffer(40))
     nativeWorld = new Float32Array(new ArrayBuffer(40))
+    isDirty = false
 
     constructor(id = -1) {
         this.native[0] = id
@@ -122,23 +123,10 @@ class Component {
 }
 
 class Camera extends Component {
-    designWidth = 640
-    designHeight = 960
-
     constructor(node) {
         super(node)
 
         globalThis.addCamera(node.id())
-    }
-
-    resize(width, height) {
-        let fit_width = width < height
-        let aspect = width / height
-        let ZOOM = fit_width ? this.designWidth : this.designHeight
-
-        width = fit_width ? ZOOM : (ZOOM * aspect)
-        height = fit_width ? (ZOOM / aspect) : ZOOM
-        globalThis.updateCamera(this.node.id(), width, height)
     }
 }
 
@@ -191,23 +179,27 @@ class BoundBox2D extends Component {
             top = parent.top - (bottom + pSize.y)
         }
 
-        if(horizontal == -1) {
-            right = parent.right - (left + pSize.x)
-        }
-
         if(horizontal == 1) {
             left = (right - pSize.x) - parent.left
         }
 
+        if(horizontal == -1) {
+            right = parent.right - (left + pSize.x)
+        }
+
         if(horizontal > 1) {
             size.x = pSize.x - (left + right)
-            this.position.x = ((parent.right - right) - (parent.left + left))
         }
 
         if(vertical > 1) {
             size.y = pSize.y - (top + bottom)
-            this.position.y = ((parent.top - top) - (parent.bottom + bottom))
         }
+
+        this.node.position.x = (parent.left + left) + size.x * pivot.x
+        this.node.position.y = (parent.bottom + bottom) + size.y * pivot.y
+        this.node.isDirty = true
+        log(parent.left, left)
+        log(this.node.position.x, this.node.position.y)
 
         this._top = top
         this._bottom = bottom
@@ -215,6 +207,19 @@ class BoundBox2D extends Component {
         this._right = right
 
         this.update(size.x, size.y, pivot.x, pivot.y)
+
+        let children = this.node.children
+        for(let i of children) {
+            let bound = i.getComponent(BoundBox2D)
+            let horizontal = bound.horizontalAlign
+            let vertical = bound.verticalAlign
+            let top = bound._top
+            let bottom = bound._bottom
+            let left = bound._left
+            let right = bound._right
+
+            bound.setAlignment(horizontal, vertical, top, bottom, left, right)
+        }
     }
 
     update(width, height, pivotX, pivotY) {
@@ -227,28 +232,42 @@ class BoundBox2D extends Component {
         this.right = width * (1. - pivotX)
     }
 
-    set(width = -1, height = -1, pivotX = -1, pivotY = -1) {
+    setSize(width, height, pivotX, pivotY) {
         let size = this.size
         let pivot = this.pivot
 
-        if (width < 0) width = size.x
-        else if (width == 0) width = height * size.x / size.y
-
-        if (height < 0) height = size.y
-        else if (height == 0) height = width * size.y / size.x
-
-        if (pivotX < 0) pivotX = pivot.x
-        else pivotX = Math.min(pivotX, 1)
-
-        if (pivotY < 0) pivotY = pivot.y
-        else pivotY = Math.min(pivotY, 1)
+        if (width == 0) width = height * size.x / size.y
+        if (height == 0) height = width * size.y / size.x
 
         size.x = width
         size.y = height
         pivot.x = pivotX
         pivot.y = pivotY
 
-        return this.update(width, height, pivotX, pivotY)
+        this.update(width, height, pivotX, pivotY)
+
+        let parent = this.node.parent
+        let pos = this.node.position
+        if(parent) {
+            let bound = parent.getComponent(BoundBox2D)
+            this._left = (pos.x - this.left) - bound.left
+            this._right = bound.right - (pos.x + this.right)
+            this._top = bound.top - (pos.y + this.top)
+            this._bottom = (pos.y - this.bottom) - bound.bottom
+        }
+
+        let children = this.node.children
+        for(let i of children) {
+            let bound = i.getComponent(BoundBox2D)
+            let horizontal = bound.horizontalAlign
+            let vertical = bound.verticalAlign
+            let top = bound._top
+            let bottom = bound._bottom
+            let left = bound._left
+            let right = bound._right
+
+            bound.setAlignment(horizontal, vertical, top, bottom, left, right)
+        }
     }
 }
 
@@ -438,34 +457,47 @@ class SpriteSliced extends Component {
 
 let root = new Node
 let camera = null
+let designWidth = 640
+let designHeight = 960
 
 var init = function () {
     beginScene()
+
+    new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
     let node = root.addChild()
     node.position.z = 1
     camera = new Camera(node)
 
-    node = root.addChild()
-    let bg = new SpriteSimple(node, 'image.ktx2', 2000, 2000)
-    bg.setMask(true)
+    // node = root.addChild()
+    // let bg = new SpriteSimple(node, 'image.ktx2', 2000, 2000)
+    // bg.setMask(true)
+
+    // node = root.addChild()
+    // node.position.z = -.1
+    // let mask = new SpriteSimple(node, 'image.ktx2', 50, 50)
+    // mask.setMask(true)
 
     node = root.addChild()
-    node.position.z = -.1
-    let mask = new SpriteSimple(node, 'image.ktx2', 50, 50)
-    mask.setMask(true)
+    // new SpriteSliced(node, 'image.ktx2', 192, 194, 80, 80, 80, 80)
+    new SpriteSimple(node, 'image.ktx2', 192, 194)
+    node.getComponent(BoundBox2D).setAlignment(-1, 1, 100, 100, 0, 0)
 
-    node = node.addChild()
-    new SpriteSliced(node, 'image.ktx2', 192, 194, 80, 80, 80, 80)
-    // new SpriteSimple(node, 'image.ktx2', 192, 194)
-
-    sendUpdateTransform([camera.node, mask.node])
+    sendUpdateTransform([camera.node])
 }
 
 var input = { x: 0, y: 0, state: 3 }
 
 var resizeView = function (width, height) {
-    camera.resize(width, height)
+    let fit_width = width < height
+    let aspect = width / height
+    let ZOOM = fit_width ? designWidth : designHeight
+
+    width = fit_width ? ZOOM : (ZOOM * aspect)
+    height = fit_width ? (ZOOM / aspect) : ZOOM
+    globalThis.updateCamera(camera.node.id(), width, height)
+
+    root.getComponent(BoundBox2D).setSize(width, height, .5, .5)
 }
 
 var transformBuffer = null
@@ -490,14 +522,21 @@ var sendUpdateTransform = function (list) {
 var t = 0
 
 var update = function (dt) {
-    let a = []
+    let a = [root]
     t += dt * 100
 
-    let target0 = root.children[2].children[0]
-    target0.rotation.z += .01
+    let id = 0
+    while(id < a.length) {
+        let children = a[id++].children
+        for(let i of children) {
+            if(i.isDirty) a.push(i)
+        }
+    }
+    // let target0 = root.children[2].children[0]
+    // target0.rotation.z += .01
 
-    a.push(target0)
-
+    // a.push(target0)
+    a.shift()
     a.length > 0 && sendUpdateTransform(a)
 }
 
