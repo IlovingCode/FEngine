@@ -183,10 +183,11 @@ JSCALLBACK(updateRenderer) {
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
     void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     VertexBuffer* vb = static_cast<VertexBuffer*>(data);
-
+    
     array = JSValueToObject(ctx, arguments[1], nullptr);
     size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     data = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, count * 4, nullptr));
     
     return arguments[0];
@@ -365,6 +366,7 @@ JSCALLBACK(updateCamera){
     const double bottom = -top;
     const double near   =  0.0;
     const double far    =  2.0;
+    
     camera->setProjection(Camera::Projection::ORTHO, left, right, bottom, top, near, far);
     
     return arguments[0];

@@ -148,21 +148,16 @@ class BoundBox2D extends Component {
     left = 0
     right = 0
 
-    isLeft() { return this.horizontalAlign == -1 || this.horizontalAlign > 1 }
-    isRight() { return this.horizontalAlign >= 1 }
-    isTop() { return this.verticalAlign >= 1 }
-    isBottom() { return this.verticalAlign == -1 || this.verticalAlign > 1 }
-
     constructor(node, size, pivot) {
         super(node)
 
         this.size = size
         this.pivot = pivot
 
-        this.update(size.x, size.y, pivot.x, pivot.y)
+        this.updateBound(size.x, size.y, pivot.x, pivot.y)
     }
 
-    setAlignment(horizontal, vertical, top, bottom, left, right) {
+    setAlignment(vertical, horizontal, top, bottom, left, right) {
         this.horizontalAlign = horizontal
         this.verticalAlign = vertical
 
@@ -171,45 +166,43 @@ class BoundBox2D extends Component {
         let size = this.size
         let pivot = this.pivot
 
-        if(vertical == 1) {
-            bottom = (top - pSize.y) - parent.bottom
+        if (vertical == 1) {
+            bottom = pSize.y - (size.y + top)
         }
 
-        if(vertical == -1) {
-            top = parent.top - (bottom + pSize.y)
+        if (vertical == -1) {
+            top = pSize.y - (size.y + bottom)
         }
 
-        if(horizontal == 1) {
-            left = (right - pSize.x) - parent.left
+        if (horizontal == 1) {
+            left = pSize.x - (size.x + right)
         }
 
-        if(horizontal == -1) {
-            right = parent.right - (left + pSize.x)
+        if (horizontal == -1) {
+            right = pSize.x - (size.x + left)
         }
 
-        if(horizontal > 1) {
+        if (horizontal > 1) {
             size.x = pSize.x - (left + right)
         }
 
-        if(vertical > 1) {
+        if (vertical > 1) {
             size.y = pSize.y - (top + bottom)
         }
 
         this.node.position.x = (parent.left + left) + size.x * pivot.x
         this.node.position.y = (parent.bottom + bottom) + size.y * pivot.y
         this.node.isDirty = true
-        log(parent.left, left)
-        log(this.node.position.x, this.node.position.y)
 
         this._top = top
         this._bottom = bottom
         this._left = left
         this._right = right
 
-        this.update(size.x, size.y, pivot.x, pivot.y)
+        this.updateBound(size.x, size.y, pivot.x, pivot.y)
 
         let children = this.node.children
-        for(let i of children) {
+        for (let i of children) {
             let bound = i.getComponent(BoundBox2D)
             let horizontal = bound.horizontalAlign
             let vertical = bound.verticalAlign
@@ -218,11 +211,11 @@ class BoundBox2D extends Component {
             let left = bound._left
             let right = bound._right
 
-            bound.setAlignment(horizontal, vertical, top, bottom, left, right)
+            bound.setAlignment(vertical, horizontal, top, bottom, left, right)
         }
     }
 
-    update(width, height, pivotX, pivotY) {
+    updateBound(width, height, pivotX, pivotY) {
         // let array = this.node.updateWorld()
         // log(array)
 
@@ -244,29 +237,31 @@ class BoundBox2D extends Component {
         pivot.x = pivotX
         pivot.y = pivotY
 
-        this.update(width, height, pivotX, pivotY)
+        this.updateBound(width, height, pivotX, pivotY)
 
-        let parent = this.node.parent
-        let pos = this.node.position
-        if(parent) {
-            let bound = parent.getComponent(BoundBox2D)
-            this._left = (pos.x - this.left) - bound.left
-            this._right = bound.right - (pos.x + this.right)
-            this._top = bound.top - (pos.y + this.top)
-            this._bottom = (pos.y - this.bottom) - bound.bottom
+        if (this.node.parent) {
+            let horizontal = this.horizontalAlign
+            let vertical = this.verticalAlign
+            let top = this._top
+            let bottom = this._bottom
+            let left = this._left
+            let right = this._right
+            this.setAlignment(vertical, horizontal, top, bottom, left, right)
         }
 
         let children = this.node.children
-        for(let i of children) {
+        for (let i of children) {
             let bound = i.getComponent(BoundBox2D)
-            let horizontal = bound.horizontalAlign
-            let vertical = bound.verticalAlign
-            let top = bound._top
-            let bottom = bound._bottom
-            let left = bound._left
-            let right = bound._right
+            if (bound) {
+                let horizontal = bound.horizontalAlign
+                let vertical = bound.verticalAlign
+                let top = bound._top
+                let bottom = bound._bottom
+                let left = bound._left
+                let right = bound._right
 
-            bound.setAlignment(horizontal, vertical, top, bottom, left, right)
+                bound.setAlignment(vertical, horizontal, top, bottom, left, right)
+            }
         }
     }
 }
@@ -282,7 +277,7 @@ class BoundBox2D extends Component {
 //         else bound.set(width, height)
 
 //         this.bound = bound
-    
+
 //         this.set(bound)
 //     }
 
@@ -322,6 +317,10 @@ class SpriteSimple extends Component {
 
         this.vb = this.createData()
         this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image)
+    }
+
+    update(dt) {
+        this.node.isDirty && globalThis.updateRenderer(this.native, this.fillBuffer(this.node.getComponent(BoundBox2D)))
     }
 
     setMask(enabled) {
@@ -384,6 +383,10 @@ class SpriteSliced extends Component {
         this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image)
     }
 
+    update(dt) {
+        this.node.isDirty && globalThis.updateRenderer(this.native, this.fillBuffer(this.node.getComponent(BoundBox2D)))
+    }
+
     setMask(enabled) {
         globalThis.updateMaterial(this.node.id(), enabled)
     }
@@ -415,7 +418,7 @@ class SpriteSliced extends Component {
         let bottom = this.bottom
         let left = this.left
         let right = this.right
-        let size = bound.size
+        let sze = bound.size
         let width = top + bottom
         let height = left + right
 
@@ -454,6 +457,31 @@ class SpriteSliced extends Component {
     // }
 }
 
+class ProgressBar extends Component {
+    progress = 0
+    background = null
+    fill = null
+
+    constructor(node) {
+        super(node)
+        this.background = node.getComponent(BoundBox2D)
+
+        this.fill = node.children[0].getComponent(BoundBox2D)
+        this.fill.setAlignment(0, -1, 0, 0, 0, 0)
+        this.set(1.)
+    }
+
+    set(progress) {
+        this.progress = Math.max(Math.min(progress, 1.), 0.)
+
+        let fill = this.fill
+        let width = this.background.size.x * this.progress
+        globalThis.log(width)
+        fill.setSize(width, fill.height, fill.pivot.x, fill.pivot.y)
+    }
+
+    get() { return this.progress }
+}
 
 let root = new Node
 let camera = null
@@ -480,10 +508,13 @@ var init = function () {
 
     node = root.addChild()
     // new SpriteSliced(node, 'image.ktx2', 192, 194, 80, 80, 80, 80)
-    new SpriteSimple(node, 'image.ktx2', 192, 194)
-    node.getComponent(BoundBox2D).setAlignment(-1, 1, 100, 100, 0, 0)
+    new SpriteSimple(node, 'tiny.ktx2', 200, 100)
+    node.getComponent(BoundBox2D).setAlignment(1, -1, 20, 0, 20, 0)
 
-    sendUpdateTransform([camera.node])
+    let child = node.addChild()
+    new SpriteSimple(child, 'red.ktx2', 20, 100)
+
+    new ProgressBar(node)
 }
 
 var input = { x: 0, y: 0, state: 3 }
@@ -497,7 +528,8 @@ var resizeView = function (width, height) {
     height = fit_width ? (ZOOM / aspect) : ZOOM
     globalThis.updateCamera(camera.node.id(), width, height)
 
-    root.getComponent(BoundBox2D).setSize(width, height, .5, .5)
+    let bound = root.getComponent(BoundBox2D)
+    bound.setSize(width, height, .5, .5)
 }
 
 var transformBuffer = null
@@ -516,7 +548,7 @@ var sendUpdateTransform = function (list) {
         offset += 10
     }
 
-    updateTransforms(transformBuffer)
+    globalThis.updateTransforms(transformBuffer)
 }
 
 var t = 0
@@ -526,10 +558,13 @@ var update = function (dt) {
     t += dt * 100
 
     let id = 0
-    while(id < a.length) {
+    while (id < a.length) {
         let children = a[id++].children
-        for(let i of children) {
-            if(i.isDirty) a.push(i)
+        for (let i of children) {
+            for (let c of i.components) {
+                c.update && c.update(dt)
+            }
+            if (i.isDirty) a.push(i)
         }
     }
     // let target0 = root.children[2].children[0]
