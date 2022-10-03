@@ -418,12 +418,13 @@ class SpriteSliced extends Component {
         let bottom = this.bottom
         let left = this.left
         let right = this.right
-        let sze = bound.size
+        let size = bound.size
         let width = top + bottom
         let height = left + right
 
         if (width > size.x || height > size.y) {
-            bound.set(Math.max(size.x, width), Math.max(size.y, height))
+            let pivot = bound.pivot
+            bound.setSize(Math.max(size.x, width), Math.max(size.y, height), pivot.x, pivot.y)
         }
 
         let btop = bound.top
@@ -466,9 +467,12 @@ class ProgressBar extends Component {
         super(node)
         this.background = node.getComponent(BoundBox2D)
 
-        this.fill = node.children[0].getComponent(BoundBox2D)
-        this.fill.setAlignment(0, -1, 0, 0, 0, 0)
-        this.set(1.)
+        let fill = node.children[0].getComponent(BoundBox2D)
+        fill.pivot.set(0, .5)
+        fill.setAlignment(0, -1, 0, 0, 0, 0)
+
+        this.fill = fill
+        this.set(.5)
     }
 
     set(progress) {
@@ -476,8 +480,7 @@ class ProgressBar extends Component {
 
         let fill = this.fill
         let width = this.background.size.x * this.progress
-        globalThis.log(width)
-        fill.setSize(width, fill.height, fill.pivot.x, fill.pivot.y)
+        fill.setSize(width, fill.size.y, fill.pivot.x, fill.pivot.y)
     }
 
     get() { return this.progress }
@@ -508,11 +511,11 @@ var init = function () {
 
     node = root.addChild()
     // new SpriteSliced(node, 'image.ktx2', 192, 194, 80, 80, 80, 80)
-    new SpriteSimple(node, 'tiny.ktx2', 200, 100)
+    new SpriteSliced(node, 'progress-bg.ktx2', 200, 32, 0, 0, 15, 15)
     node.getComponent(BoundBox2D).setAlignment(1, -1, 20, 0, 20, 0)
 
     let child = node.addChild()
-    new SpriteSimple(child, 'red.ktx2', 20, 100)
+    new SpriteSliced(child, 'progress-fill.ktx2', 200, 28, 0, 0, 15, 15)
 
     new ProgressBar(node)
 }
@@ -569,6 +572,11 @@ var update = function (dt) {
     }
     // let target0 = root.children[2].children[0]
     // target0.rotation.z += .01
+
+    let progress = root.children[1].getComponent(ProgressBar)
+    // globalThis.log(progress)
+    let c = t * .01
+    progress.set(c - Math.floor(c))
 
     // a.push(target0)
     a.shift()
