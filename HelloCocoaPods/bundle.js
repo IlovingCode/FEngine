@@ -392,23 +392,36 @@ class SpriteSliced extends Component {
     }
 
     createData() {
+        let left = 0
+        let right = 1
+        let top = 1
+        let bottom = 0
+
+        let width = this.bound.size.x
+        let height = this.bound.size.y
+
+        let bleft = this.left / width
+        let bright = 1. - this.right / width
+        let btop = 1. - this.top / height
+        let bbottom = this.bottom / height
+
         let array = [
-            0, 0, 0, 0,  //0
-            0, 0, 1, 0,  //1
-            0, 0, 0, 1,  //2
-            0, 0, 1, 1,  //3
-            0, 0, 0, 0,  //4
-            0, 0, 1, 0,  //5
-            0, 0, 0, 1,  //6
-            0, 0, 1, 1,  //7
-            0, 0, 0, 0,  //8
-            0, 0, 1, 0,  //9
-            0, 0, 0, 1,  //10
-            0, 0, 1, 1,  //11
-            0, 0, 0, 0,  //12
-            0, 0, 1, 0,  //13
-            0, 0, 0, 1,  //14
-            0, 0, 1, 1,  //15
+            0, 0, left, btop,  //0
+            0, 0, bleft, btop,  //1
+            0, 0, left, top,  //2
+            0, 0, bleft, top,  //3
+            0, 0, bright, btop,  //4
+            0, 0, right, btop,  //5
+            0, 0, bright, top,  //6
+            0, 0, right, top,  //7
+            0, 0, left, bottom,  //8
+            0, 0, bleft, bottom,  //9
+            0, 0, left, bbottom,  //10
+            0, 0, bleft, bbottom,  //11
+            0, 0, bright, bottom,  //12
+            0, 0, right, bottom,  //13
+            0, 0, bright, bbottom,  //14
+            0, 0, right, bbottom,  //15
         ]
         return new Float32Array(array)
     }
