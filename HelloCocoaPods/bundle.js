@@ -157,6 +157,12 @@ class BoundBox2D extends Component {
         this.updateBound(size.x, size.y, pivot.x, pivot.y)
     }
 
+    checkInside(x, y) {
+        let pos = this.node.worldPosition
+        return x < pos.x + this.right && x > pos.x + this.left
+            && y < pos.y + this.top && y > pos.y + this.bottom
+    }
+
     setAlignment(vertical, horizontal, top, bottom, left, right) {
         this.horizontalAlign = horizontal
         this.verticalAlign = vertical
@@ -165,6 +171,7 @@ class BoundBox2D extends Component {
         let pSize = parent.size
         let size = this.size
         let pivot = this.pivot
+        let node = this.node
 
         if (vertical == 1) {
             bottom = pSize.y - (size.y + top)
@@ -190,9 +197,15 @@ class BoundBox2D extends Component {
             size.y = pSize.y - (top + bottom)
         }
 
-        this.node.position.x = (parent.left + left) + size.x * pivot.x
-        this.node.position.y = (parent.bottom + bottom) + size.y * pivot.y
-        this.node.isDirty = true
+        if (vertical != 0) {
+            node.position.y = (parent.bottom + bottom) + size.y * pivot.y
+            node.isDirty = true
+        }
+
+        if (horizontal != 0) {
+            node.position.x = (parent.left + left) + size.x * pivot.x
+            node.isDirty = true
+        }
 
         this._top = top
         this._bottom = bottom
@@ -247,20 +260,20 @@ class BoundBox2D extends Component {
             let left = this._left
             let right = this._right
             this.setAlignment(vertical, horizontal, top, bottom, left, right)
-        }
+        } else {
+            let children = this.node.children
+            for (let i of children) {
+                let bound = i.getComponent(BoundBox2D)
+                if (bound) {
+                    let horizontal = bound.horizontalAlign
+                    let vertical = bound.verticalAlign
+                    let top = bound._top
+                    let bottom = bound._bottom
+                    let left = bound._left
+                    let right = bound._right
 
-        let children = this.node.children
-        for (let i of children) {
-            let bound = i.getComponent(BoundBox2D)
-            if (bound) {
-                let horizontal = bound.horizontalAlign
-                let vertical = bound.verticalAlign
-                let top = bound._top
-                let bottom = bound._bottom
-                let left = bound._left
-                let right = bound._right
-
-                bound.setAlignment(vertical, horizontal, top, bottom, left, right)
+                    bound.setAlignment(vertical, horizontal, top, bottom, left, right)
+                }
             }
         }
     }
@@ -305,6 +318,7 @@ class SpriteSimple extends Component {
     vb = null
     native = null
     bound = null
+    image = null
 
     constructor(node, image, width, height) {
         super(node)
@@ -314,9 +328,10 @@ class SpriteSimple extends Component {
         else bound.set(width, height)
 
         this.bound = bound
+        this.image = image
 
         this.vb = this.createData()
-        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image)
+        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
     }
 
     update(dt) {
@@ -328,11 +343,16 @@ class SpriteSimple extends Component {
     }
 
     createData() {
+        let left = 0
+        let right = 1
+        let top = 1
+        let bottom = 0
+
         let array = [
-            0, 0, 0, 0,  //0
-            0, 0, 1, 0,  //1
-            0, 0, 0, 1,  //2
-            0, 0, 1, 1,  //3
+            0, 0, left, bottom,  //0
+            0, 0, right, bottom,  //1
+            0, 0, left, top,  //2
+            0, 0, right, top,  //3
         ]
         return new Float32Array(array)
     }
@@ -365,6 +385,7 @@ class SpriteSliced extends Component {
     left = 0
     right = 0
     bound = null
+    image = null
 
     constructor(node, image, width, height, top, bottom, left, right) {
         super(node)
@@ -378,9 +399,10 @@ class SpriteSliced extends Component {
         if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
 
         this.bound = bound
+        this.image = image
 
         this.vb = this.createData()
-        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image)
+        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
     }
 
     update(dt) {
@@ -397,8 +419,8 @@ class SpriteSliced extends Component {
         let top = 1
         let bottom = 0
 
-        let width = this.bound.size.x
-        let height = this.bound.size.y
+        let width = this.image.width
+        let height = this.image.height
 
         let bleft = this.left / width
         let bright = 1. - this.right / width
@@ -432,8 +454,8 @@ class SpriteSliced extends Component {
         let left = this.left
         let right = this.right
         let size = bound.size
-        let width = top + bottom
-        let height = left + right
+        let height = top + bottom
+        let width = left + right
 
         if (width > size.x || height > size.y) {
             let pivot = bound.pivot
@@ -471,6 +493,20 @@ class SpriteSliced extends Component {
     // }
 }
 
+class Button extends Component {
+    target = null
+
+    constructor(node) {
+        super(node)
+
+        this.target = node.getComponent(BoundBox2D)
+    }
+
+    check(x, y) {
+
+    }
+}
+
 class ProgressBar extends Component {
     progress = 0
     background = null
@@ -485,7 +521,7 @@ class ProgressBar extends Component {
         fill.setAlignment(0, -1, 0, 0, 0, 0)
 
         this.fill = fill
-        this.set(.5)
+        this.set(fill.size.x / this.background.size.x)
     }
 
     set(progress) {
@@ -503,9 +539,35 @@ let root = new Node
 let camera = null
 let designWidth = 640
 let designHeight = 960
+let textures = {
+    tiny: {
+        width: 2,
+        height: 2,
+        native: null
+    },
+    red: {
+        width: 2,
+        height: 2,
+        native: null
+    },
+    progress_bg: {
+        width: 510,
+        height: 32,
+        native: null
+    },
+    progress_fill: {
+        width: 56,
+        height: 28,
+        native: null
+    }
+}
 
 var init = function () {
     beginScene()
+
+    for (let i in textures) {
+        textures[i].native = globalThis.loadImage(i)
+    }
 
     new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
@@ -513,22 +575,12 @@ var init = function () {
     node.position.z = 1
     camera = new Camera(node)
 
-    // node = root.addChild()
-    // let bg = new SpriteSimple(node, 'image.ktx2', 2000, 2000)
-    // bg.setMask(true)
-
-    // node = root.addChild()
-    // node.position.z = -.1
-    // let mask = new SpriteSimple(node, 'image.ktx2', 50, 50)
-    // mask.setMask(true)
-
     node = root.addChild()
-    // new SpriteSliced(node, 'image.ktx2', 192, 194, 80, 80, 80, 80)
-    new SpriteSliced(node, 'progress-bg.ktx2', 200, 32, 0, 0, 15, 15)
-    node.getComponent(BoundBox2D).setAlignment(1, -1, 20, 0, 20, 0)
+    new SpriteSliced(node, textures.progress_bg, 200, 28, 0, 0, 20, 20)
+    node.getComponent(BoundBox2D).setAlignment(1, -1, 10, 0, 10, 0)
 
     let child = node.addChild()
-    new SpriteSliced(child, 'progress-fill.ktx2', 200, 28, 0, 0, 15, 15)
+    new SpriteSliced(child, textures.progress_fill, 200, 28, 0, 0, 15, 15)
 
     new ProgressBar(node)
 }

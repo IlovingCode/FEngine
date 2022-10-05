@@ -163,10 +163,12 @@ JSCALLBACK(getWorldTransform){
     return arguments[0];
 }
 
-Texture* loadImage(string filename) {
+JSCALLBACK(loadImage) {
+    string filename = JSValueToStdString(ctx, arguments[0]);
     const Path parent = Path::getCurrentExecutable().getParent();
-//    cout << (parent + filename) << endl;
-    ifstream file(parent + filename, ios::binary);
+//    cout << (parent + (filename + ".ktx2")) << endl;
+
+    ifstream file(parent + (filename + ".ktx2"), ios::binary);
     const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
 
     ktxreader::Ktx2Reader reader(*engine);
@@ -175,9 +177,27 @@ Texture* loadImage(string filename) {
     reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
     reader.requestFormat(Texture::InternalFormat::RGBA8);
 
-    return reader.load(contents.data(), contents.size(),
+    Texture* texture = reader.load(contents.data(), contents.size(),
             ktxreader::Ktx2Reader::TransferFunction::sRGB);
+    
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, texture, sizeof(texture), nullptr, nullptr, nullptr);
 }
+
+//Texture* loadImage(string filename) {
+//    const Path parent = Path::getCurrentExecutable().getParent();
+////    cout << (parent + filename) << endl;
+//    ifstream file(parent + filename, ios::binary);
+//    const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
+//
+//    ktxreader::Ktx2Reader reader(*engine);
+//
+//    // Uncompressed formats are lower priority, so they get added last.
+//    reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
+//    reader.requestFormat(Texture::InternalFormat::RGBA8);
+//
+//    return reader.load(contents.data(), contents.size(),
+//            ktxreader::Ktx2Reader::TransferFunction::sRGB);
+//}
 
 JSCALLBACK(updateRenderer) {
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
@@ -290,8 +310,10 @@ JSCALLBACK(addRenderer){
     auto matInstance = mat->createInstance();
     matInstance->setDepthCulling(true);
     if(argumentCount > 2) {
-        string file = JSValueToStdString(ctx, arguments[2]);
-        if(!file.empty()) matInstance->setParameter("texture", loadImage(file), TextureSampler());
+        array = JSValueToObject(ctx, arguments[2], nullptr);
+        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+        Texture* texture = static_cast<Texture*>(data);
+        matInstance->setParameter("texture", texture, TextureSampler());
     }
 
     auto ib_t = count > 16 ? ib_9 : ib;
@@ -428,6 +450,7 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("updateRenderer", updateRenderer, globalObject);
     registerNativeFunction("updateMaterial", updateMaterial, globalObject);
     registerNativeFunction("getWorldTransform", getWorldTransform, globalObject);
+    registerNativeFunction("loadImage", loadImage, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + filename) << endl;
