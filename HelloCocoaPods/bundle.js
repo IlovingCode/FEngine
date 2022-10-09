@@ -58,6 +58,7 @@ class Node {
     native = new Float32Array(new ArrayBuffer(40))
     nativeWorld = new Float32Array(new ArrayBuffer(40))
     isDirty = false
+    active = true
 
     constructor(id = -1) {
         this.native[0] = id
@@ -120,6 +121,9 @@ class Component {
         node.addComponent(this)
         this.enabled = true
     }
+
+    onEnable() {}
+    onDisable() {}
 }
 
 class Camera extends Component {
@@ -500,9 +504,15 @@ class Button extends Component {
         super(node)
 
         this.target = node.getComponent(BoundBox2D)
+
+        current_scene.clickableObj.push(this)
     }
 
     check(x, y) {
+
+    }
+
+    update(dt) {
 
     }
 }
@@ -535,6 +545,15 @@ class ProgressBar extends Component {
     get() { return this.progress }
 }
 
+class Scene {
+    root = new Node
+    source = []
+
+    clickableObj = []
+
+    init() {}
+}
+
 let root = new Node
 let camera = null
 let designWidth = 640
@@ -562,12 +581,16 @@ let textures = {
     }
 }
 
+var current_scene = new Scene
+
 var init = function () {
     beginScene()
 
     for (let i in textures) {
         textures[i].native = globalThis.loadImage(i)
     }
+
+    let root = current_scene.root
 
     new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
@@ -596,7 +619,7 @@ var resizeView = function (width, height) {
     height = fit_width ? (ZOOM / aspect) : ZOOM
     globalThis.updateCamera(camera.node.id(), width, height)
 
-    let bound = root.getComponent(BoundBox2D)
+    let bound = current_scene.root.getComponent(BoundBox2D)
     bound.setSize(width, height, .5, .5)
 }
 
@@ -614,6 +637,8 @@ var sendUpdateTransform = function (list) {
     for (let i of list) {
         transformBuffer.set(i.toArray(), offset)
         offset += 10
+
+        i.isDirty = false
     }
 
     globalThis.updateTransforms(transformBuffer)
@@ -622,6 +647,7 @@ var sendUpdateTransform = function (list) {
 var t = 0
 
 var update = function (dt) {
+    let root = current_scene.root
     let a = [root]
     t += dt * 100
 
@@ -630,9 +656,9 @@ var update = function (dt) {
         let children = a[id++].children
         for (let i of children) {
             for (let c of i.components) {
-                c.update && c.update(dt)
+                c.enabled && c.update && c.update(dt)
             }
-            if (i.isDirty) a.push(i)
+            if (i.active) a.push(i)
         }
     }
     // let target0 = root.children[2].children[0]
@@ -644,7 +670,7 @@ var update = function (dt) {
     progress.set(c - Math.floor(c))
 
     // a.push(target0)
-    a.shift()
+    a = a.filter(i => { return i.isDirty })
     a.length > 0 && sendUpdateTransform(a)
 }
 
