@@ -57,7 +57,7 @@ class Node {
     components = []
     native = new Float32Array(new ArrayBuffer(40))
     nativeWorld = new Float32Array(new ArrayBuffer(40))
-    isDirty = false
+    isDirty = true
     active = true
 
     constructor(id = -1) {
@@ -137,7 +137,7 @@ class Camera extends Component {
 class BoundBox2D extends Component {
     size = null
     pivot = null
-    onSizeChanged = null
+    onBoundChanged = null
 
     horizontalAlign = 0
     verticalAlign = 0
@@ -163,8 +163,11 @@ class BoundBox2D extends Component {
 
     checkInside(x, y) {
         let pos = this.node.worldPosition
-        return x < pos.x + this.right && x > pos.x + this.left
-            && y < pos.y + this.top && y > pos.y + this.bottom
+        x -= pos.x
+        y -= pos.y
+
+        return x < this.right && x > this.left
+            && y < this.top && y > this.bottom
     }
 
     setAlignment(vertical, horizontal, top, bottom, left, right) {
@@ -240,6 +243,8 @@ class BoundBox2D extends Component {
         this.bottom = -height * pivotY
         this.left = -width * pivotX
         this.right = width * (1. - pivotX)
+
+        this.onBoundChanged && this.onBoundChanged()
     }
 
     setSize(width, height, pivotX, pivotY) {
@@ -254,8 +259,6 @@ class BoundBox2D extends Component {
         pivot.x = pivotX
         pivot.y = pivotY
 
-        this.updateBound(width, height, pivotX, pivotY)
-
         if (this.node.parent) {
             let horizontal = this.horizontalAlign
             let vertical = this.verticalAlign
@@ -265,6 +268,8 @@ class BoundBox2D extends Component {
             let right = this._right
             this.setAlignment(vertical, horizontal, top, bottom, left, right)
         } else {
+            this.updateBound(width, height, pivotX, pivotY)
+
             let children = this.node.children
             for (let i of children) {
                 let bound = i.getComponent(BoundBox2D)
@@ -332,14 +337,15 @@ class SpriteSimple extends Component {
         else bound.set(width, height)
 
         this.bound = bound
+        bound.onBoundChanged = this.onBoundUpdated.bind(this)
         this.image = image
 
         this.vb = this.createData()
         this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
     }
 
-    update(dt) {
-        this.node.isDirty && globalThis.updateRenderer(this.native, this.fillBuffer(this.node.getComponent(BoundBox2D)))
+    onBoundUpdated() {
+        globalThis.updateRenderer(this.native, this.fillBuffer(this.node.getComponent(BoundBox2D)))
     }
 
     setMask(enabled) {
@@ -403,14 +409,15 @@ class SpriteSliced extends Component {
         if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
 
         this.bound = bound
+        bound.onBoundChanged = this.onBoundUpdated.bind(this)
         this.image = image
 
         this.vb = this.createData()
         this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
     }
 
-    update(dt) {
-        this.node.isDirty && globalThis.updateRenderer(this.native, this.fillBuffer(this.node.getComponent(BoundBox2D)))
+    onBoundUpdated() {
+        globalThis.updateRenderer(this.native, this.fillBuffer(this.node.getComponent(BoundBox2D)))
     }
 
     setMask(enabled) {
@@ -504,12 +511,10 @@ class Button extends Component {
         super(node)
 
         this.target = node.getComponent(BoundBox2D)
-
-        current_scene.clickableObj.push(this)
     }
 
     check(x, y) {
-
+        return this.target.checkInside(x, y)
     }
 
     update(dt) {
@@ -545,15 +550,6 @@ class ProgressBar extends Component {
     get() { return this.progress }
 }
 
-class Scene {
-    root = new Node
-    source = []
-
-    clickableObj = []
-
-    init() {}
-}
-
 let root = new Node
 let camera = null
 let designWidth = 640
@@ -581,16 +577,12 @@ let textures = {
     }
 }
 
-var current_scene = new Scene
-
 var init = function () {
     beginScene()
 
     for (let i in textures) {
         textures[i].native = globalThis.loadImage(i)
     }
-
-    let root = current_scene.root
 
     new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
@@ -619,7 +611,7 @@ var resizeView = function (width, height) {
     height = fit_width ? (ZOOM / aspect) : ZOOM
     globalThis.updateCamera(camera.node.id(), width, height)
 
-    let bound = current_scene.root.getComponent(BoundBox2D)
+    let bound = root.getComponent(BoundBox2D)
     bound.setSize(width, height, .5, .5)
 }
 
@@ -646,9 +638,24 @@ var sendUpdateTransform = function (list) {
 
 var t = 0
 
+var checkInput= function(list) {
+    let x = input.x
+    let y = input.y
+    let state = input.state
+
+    globalThis.log(state)
+
+    for(let i of list) {
+        if(i.check(x, y)) {
+            globalThis.log('aaaa')
+            break
+        }
+    }
+}
+
 var update = function (dt) {
-    let root = current_scene.root
     let a = [root]
+    let interactables = []
     t += dt * 100
 
     let id = 0
@@ -657,15 +664,18 @@ var update = function (dt) {
         for (let i of children) {
             for (let c of i.components) {
                 c.enabled && c.update && c.update(dt)
+                c.enabled && (c instanceof Button) && interactables.push(c)
             }
-            if (i.active) a.push(i)
+
+            i.active && a.push(i)
         }
     }
+
+    checkInput(interactables)
     // let target0 = root.children[2].children[0]
     // target0.rotation.z += .01
 
     let progress = root.children[1].getComponent(ProgressBar)
-    // globalThis.log(progress)
     let c = t * .01
     progress.set(c - Math.floor(c))
 
