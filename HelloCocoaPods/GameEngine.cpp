@@ -409,11 +409,16 @@ JSObjectRef getScriptFunction(const char* name, JSObjectRef thisObject){
     return JSValueToObject(globalContext, func, nullptr);
 }
 
-void GameEngine::input(uint16_t x, uint16_t y, int16_t state) {
+void GameEngine::input(int16_t x, int16_t y, int16_t state) {
 //    cout<< state << endl;
     
     static JSStringRef xStr, yStr, stateStr;
     static JSObjectRef input;
+    
+    auto viewport = view->getViewport();
+    
+    x = x - viewport.width / 2;
+    y = viewport.height / 2 - y;
     
     if(input == nullptr) {
         JSStringRef inputStr = JSStringCreateWithUTF8CString("input");

@@ -49,6 +49,8 @@ class Vec2 {
 }
 
 class Node {
+    worldPosition = new Vec3(0, 0, 0)
+
     position = new Vec3(0, 0, 0)
     rotation = new Vec3(0, 0, 0)
     scale = new Vec3(1, 1, 1)
@@ -89,7 +91,14 @@ class Node {
     }
 
     updateWorld() {
-        return globalThis.getWorldTransform(this.nativeWorld)
+        let worldTransform = globalThis.getWorldTransform(this.nativeWorld)
+
+        let worldPos = this.worldPosition
+        worldPos.x = worldTransform[1]
+        worldPos.y = worldTransform[2]
+        worldPos.z = worldTransform[3]
+
+        return worldPos
     }
 
     toArray = function () {
@@ -163,8 +172,14 @@ class BoundBox2D extends Component {
 
     checkInside(x, y) {
         let pos = this.node.worldPosition
+
+        globalThis.log('-----------------')
+        globalThis.log(pos.x, pos.y, x, y)
+
         x -= pos.x
         y -= pos.y
+
+        globalThis.log(x, y, this.left, this.right, this.top, this.bottom)
 
         return x < this.right && x > this.left
             && y < this.top && y > this.bottom
@@ -236,9 +251,6 @@ class BoundBox2D extends Component {
     }
 
     updateBound(width, height, pivotX, pivotY) {
-        // let array = this.node.updateWorld()
-        // log(array)
-
         this.top = height * (1. - pivotY)
         this.bottom = -height * pivotY
         this.left = -width * pivotX
@@ -514,12 +526,14 @@ class Button extends Component {
     }
 
     check(x, y) {
+        this.node.updateWorld()
+
         return this.target.checkInside(x, y)
     }
 
-    update(dt) {
+    // update(dt) {
 
-    }
+    // }
 }
 
 class ProgressBar extends Component {
@@ -598,6 +612,8 @@ var init = function () {
     new SpriteSliced(child, textures.progress_fill, 200, 28, 0, 0, 15, 15)
 
     new ProgressBar(node)
+
+    new Button(node)
 }
 
 var input = { x: 0, y: 0, state: 3 }
@@ -619,7 +635,8 @@ var transformBuffer = null
 var bufferLength = 0
 
 var sendUpdateTransform = function (list) {
-    let length = list.length * 10
+    const SEGMENT = 10
+    let length = list.length * SEGMENT
     if (bufferLength != length) {
         transformBuffer = new Float32Array(length)
         bufferLength = length
@@ -628,7 +645,7 @@ var sendUpdateTransform = function (list) {
     let offset = 0
     for (let i of list) {
         transformBuffer.set(i.toArray(), offset)
-        offset += 10
+        offset += SEGMENT
 
         i.isDirty = false
     }
@@ -638,12 +655,12 @@ var sendUpdateTransform = function (list) {
 
 var t = 0
 
-var checkInput= function(list) {
+var checkInput = function(list) {
     let x = input.x
     let y = input.y
     let state = input.state
 
-    globalThis.log(state)
+    if(state > 0) return
 
     for(let i of list) {
         if(i.check(x, y)) {
@@ -671,7 +688,6 @@ var update = function (dt) {
         }
     }
 
-    checkInput(interactables)
     // let target0 = root.children[2].children[0]
     // target0.rotation.z += .01
 
@@ -682,6 +698,8 @@ var update = function (dt) {
     // a.push(target0)
     a = a.filter(i => { return i.isDirty })
     a.length > 0 && sendUpdateTransform(a)
+
+    checkInput(interactables)
 }
 
 init()
