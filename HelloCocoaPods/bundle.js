@@ -131,8 +131,8 @@ class Component {
         this.enabled = true
     }
 
-    onEnable() {}
-    onDisable() {}
+    onEnable() { }
+    onDisable() { }
 }
 
 class Camera extends Component {
@@ -172,14 +172,8 @@ class BoundBox2D extends Component {
 
     checkInside(x, y) {
         let pos = this.node.worldPosition
-
-        globalThis.log('-----------------')
-        globalThis.log(pos.x, pos.y, x, y)
-
         x -= pos.x
         y -= pos.y
-
-        globalThis.log(x, y, this.left, this.right, this.top, this.bottom)
 
         return x < this.right && x > this.left
             && y < this.top && y > this.bottom
@@ -339,7 +333,6 @@ class SpriteSimple extends Component {
     vb = null
     native = null
     bound = null
-    image = null
 
     constructor(node, image, width, height) {
         super(node)
@@ -350,9 +343,8 @@ class SpriteSimple extends Component {
 
         this.bound = bound
         bound.onBoundChanged = this.onBoundUpdated.bind(this)
-        this.image = image
 
-        this.vb = this.createData()
+        this.vb = this.createData(image)
         this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
     }
 
@@ -364,7 +356,7 @@ class SpriteSimple extends Component {
         globalThis.updateMaterial(this.node.id(), enabled)
     }
 
-    createData() {
+    createData(image) {
         let left = 0
         let right = 1
         let top = 1
@@ -407,7 +399,6 @@ class SpriteSliced extends Component {
     left = 0
     right = 0
     bound = null
-    image = null
 
     constructor(node, image, width, height, top, bottom, left, right) {
         super(node)
@@ -422,9 +413,8 @@ class SpriteSliced extends Component {
 
         this.bound = bound
         bound.onBoundChanged = this.onBoundUpdated.bind(this)
-        this.image = image
 
-        this.vb = this.createData()
+        this.vb = this.createData(image)
         this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
     }
 
@@ -436,14 +426,14 @@ class SpriteSliced extends Component {
         globalThis.updateMaterial(this.node.id(), enabled)
     }
 
-    createData() {
+    createData(image) {
         let left = 0
         let right = 1
         let top = 1
         let bottom = 0
 
-        let width = this.image.width
-        let height = this.image.height
+        let width = image.width
+        let height = image.height
 
         let bleft = this.left / width
         let bright = 1. - this.right / width
@@ -606,7 +596,7 @@ var init = function () {
 
     node = root.addChild()
     new SpriteSliced(node, textures.progress_bg, 200, 28, 0, 0, 20, 20)
-    node.getComponent(BoundBox2D).setAlignment(1, -1, 10, 0, 10, 0)
+    node.getComponent(BoundBox2D).setAlignment(1, -1, 30, 0, 30, 0)
 
     let child = node.addChild()
     new SpriteSliced(child, textures.progress_fill, 200, 28, 0, 0, 15, 15)
@@ -616,12 +606,19 @@ var init = function () {
     new Button(node)
 }
 
-var input = { x: 0, y: 0, state: 3 }
+var input = {
+    x: 0, y: 0,
+    prevX: 0, prevY: 0,
+    state: 3, prevState: 3,
+    stack: 0,
+    scale: 1
+}
 
 var resizeView = function (width, height) {
     let fit_width = width < height
     let aspect = width / height
     let ZOOM = fit_width ? designWidth : designHeight
+    input.scale = ZOOM / (fit_width ? width : height)
 
     width = fit_width ? ZOOM : (ZOOM * aspect)
     height = fit_width ? (ZOOM / aspect) : ZOOM
@@ -655,16 +652,25 @@ var sendUpdateTransform = function (list) {
 
 var t = 0
 
-var checkInput = function(list) {
-    let x = input.x
-    let y = input.y
+var checkInput = function (list) {
     let state = input.state
+    let prevState = input.prevState
 
-    if(state > 0) return
+    input.stack = state == prevState ? (input.stack + 1) : 0
+    input.prevState = input.state
 
-    for(let i of list) {
-        if(i.check(x, y)) {
-            globalThis.log('aaaa')
+    if (state == 3 && prevState == 3) return // no input
+
+    let isHold = state == 0 && prevState == 0
+    let isTap = state == 0 && prevState != 0
+    let isClick = state == 3 && prevState == 0
+
+    let x = input.x * input.scale
+    let y = input.y * input.scale
+
+    for (let i of list) {
+        if (i.check(x, y)) {
+            // globalThis.log('aaaa')
             break
         }
     }

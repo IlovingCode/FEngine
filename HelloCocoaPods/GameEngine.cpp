@@ -368,8 +368,6 @@ JSCALLBACK(addCamera){
     Camera* camera = engine->createCamera(entity);
     view->setCamera(camera);
     
-    renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = true});
-    
     return arguments[0];
 }
 
@@ -409,7 +407,7 @@ JSObjectRef getScriptFunction(const char* name, JSObjectRef thisObject){
     return JSValueToObject(globalContext, func, nullptr);
 }
 
-void GameEngine::input(int16_t x, int16_t y, int16_t state) {
+void GameEngine::input(float x, float y, uint8_t state) {
 //    cout<< state << endl;
     
     static JSStringRef xStr, yStr, stateStr;
@@ -417,8 +415,8 @@ void GameEngine::input(int16_t x, int16_t y, int16_t state) {
     
     auto viewport = view->getViewport();
     
-    x = x - viewport.width / 2;
-    y = viewport.height / 2 - y;
+    x = x - viewport.width * .5f;
+    y = viewport.height * .5f - y;
     
     if(input == nullptr) {
         JSStringRef inputStr = JSStringCreateWithUTF8CString("input");
@@ -441,6 +439,8 @@ GameEngine::GameEngine(void* nativeWindow){
     swapChain = engine->createSwapChain(nativeWindow);
     renderer = engine->createRenderer();
     view = engine->createView();
+    
+    renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = true});
     
     globalContext = JSGlobalContextCreate(nullptr);
     JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
