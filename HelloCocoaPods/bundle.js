@@ -58,16 +58,37 @@ class Node {
     children = []
     components = []
     native = new Float32Array(new ArrayBuffer(40))
-    nativeWorld = new Float32Array(new ArrayBuffer(40))
     isDirty = true
     active = true
+    globalActive = true
 
     constructor(id = -1) {
         this.native[0] = id
-        this.nativeWorld[0] = id
     }
 
     id() { return this.native[0] }
+
+    setActive(enabled) {
+        if (this.active == enabled) return
+
+        this.active = enabled
+        this.onActive(this.parent.globalActive && enabled)    
+    }
+
+    onActive(enabled) {
+        if(this.globalActive == enabled) return
+        this.globalActive = enabled
+
+        for(let i of this.components) {
+            if(i.enabled) {
+                i.onEnableChanged && i.onEnableChanged(enabled)
+            }
+        }
+
+        for(let i of this.children) {
+            i.active && i.onActive(enabled)
+        }
+    }
 
     addChild(node) {
         if (!node) {
@@ -91,7 +112,7 @@ class Node {
     }
 
     updateWorld() {
-        let worldTransform = globalThis.getWorldTransform(this.nativeWorld)
+        let worldTransform = globalThis.getWorldTransform(this.native)
 
         let worldPos = this.worldPosition
         worldPos.x = worldTransform[1]
@@ -122,8 +143,8 @@ class Node {
 }
 
 class Component {
-    enabled = false
-    node = null
+    // enabled = false
+    // node = null
 
     constructor(node) {
         this.node = node
@@ -131,8 +152,12 @@ class Component {
         this.enabled = true
     }
 
-    onEnable() { }
-    onDisable() { }
+    setEnable(enabled) {
+        if (this.enabled == enabled) return
+
+        this.enabled = enabled
+        this.onEnableChanged && this.onEnableChanged(enabled)
+    }
 }
 
 class Camera extends Component {
@@ -144,8 +169,8 @@ class Camera extends Component {
 }
 
 class BoundBox2D extends Component {
-    size = null
-    pivot = null
+    // size = null
+    // pivot = null
     onBoundChanged = null
 
     horizontalAlign = 0
@@ -156,10 +181,10 @@ class BoundBox2D extends Component {
     _left = 0
     _right = 0
 
-    top = 0
-    bottom = 0
-    left = 0
-    right = 0
+    // top = 0
+    // bottom = 0
+    // left = 0
+    // right = 0
 
     constructor(node, size, pivot) {
         super(node)
@@ -183,11 +208,11 @@ class BoundBox2D extends Component {
         this.horizontalAlign = horizontal
         this.verticalAlign = vertical
 
-        let parent = this.node.parent.getComponent(BoundBox2D)
+        let node = this.node
+        let parent = node.parent.getComponent(BoundBox2D)
         let pSize = parent.size
         let size = this.size
         let pivot = this.pivot
-        let node = this.node
 
         if (vertical == 1) {
             bottom = pSize.y - (size.y + top)
@@ -250,7 +275,8 @@ class BoundBox2D extends Component {
         this.left = -width * pivotX
         this.right = width * (1. - pivotX)
 
-        this.onBoundChanged && this.onBoundChanged()
+        let cb = this.onBoundChanged
+        cb && cb(this)
     }
 
     setSize(width, height, pivotX, pivotY) {
@@ -332,28 +358,38 @@ class BoundBox2D extends Component {
 class SpriteSimple extends Component {
     vb = null
     native = null
-    bound = null
+    isMask = false
 
     constructor(node, image, width, height) {
         super(node)
 
         let bound = node.getComponent(BoundBox2D)
         if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
-        else bound.set(width, height)
+        else {
+            let pivot = bound.pivot
+            bound.setSize(width, height, pivot.x, pivot.y)
+        }
 
-        this.bound = bound
         bound.onBoundChanged = this.onBoundUpdated.bind(this)
 
         this.vb = this.createData(image)
         this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
     }
 
-    onBoundUpdated() {
-        globalThis.updateRenderer(this.native, this.fillBuffer(this.node.getComponent(BoundBox2D)))
+    onBoundUpdated(bound) {
+        let buffer = this.fillBuffer(bound)
+        buffer && globalThis.updateRenderer(this.native, buffer)
     }
 
     setMask(enabled) {
-        globalThis.updateMaterial(this.node.id(), enabled)
+        if (this.isMask == enabled) return
+
+        this.isMask = enabled
+        this.enabled && globalThis.updateMaterial(this.node.id(), this.isMask, true)
+    }
+
+    onEnableChanged(enabled) {
+        globalThis.updateMaterial(this.node.id(), this.isMask, enabled)
     }
 
     createData(image) {
@@ -363,10 +399,10 @@ class SpriteSimple extends Component {
         let bottom = 0
 
         let array = [
-            0, 0, left, bottom,  //0
-            0, 0, right, bottom,  //1
-            0, 0, left, top,  //2
-            0, 0, right, top,  //3
+            0, 0, left, bottom,     //0
+            0, 0, right, bottom,    //1
+            0, 0, left, top,        //2
+            0, 0, right, top,       //3
         ]
         return new Float32Array(array)
     }
@@ -391,42 +427,20 @@ class SpriteSimple extends Component {
     // }
 }
 
-class SpriteSliced extends Component {
-    vb = null
-    native = null
-    top = 0
-    bottom = 0
-    left = 0
-    right = 0
-    bound = null
-
-    constructor(node, image, width, height, top, bottom, left, right) {
-        super(node)
-
-        this.top = top
-        this.bottom = bottom
-        this.left = left
-        this.right = right
-
-        let bound = node.getComponent(BoundBox2D)
-        if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
-
-        this.bound = bound
-        bound.onBoundChanged = this.onBoundUpdated.bind(this)
-
-        this.vb = this.createData(image)
-        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
-    }
-
-    onBoundUpdated() {
-        globalThis.updateRenderer(this.native, this.fillBuffer(this.node.getComponent(BoundBox2D)))
-    }
-
-    setMask(enabled) {
-        globalThis.updateMaterial(this.node.id(), enabled)
-    }
+class SpriteSliced extends SpriteSimple {
+    // constructor is called before the below assignment
+    // so we need to rem them
+    // top = 0
+    // bottom = 0
+    // left = 0
+    // right = 0
 
     createData(image) {
+        this.top = image.top
+        this.bottom = image.bottom
+        this.left = image.left
+        this.right = image.right
+
         let left = 0
         let right = 1
         let top = 1
@@ -473,6 +487,7 @@ class SpriteSliced extends Component {
         if (width > size.x || height > size.y) {
             let pivot = bound.pivot
             bound.setSize(Math.max(size.x, width), Math.max(size.y, height), pivot.x, pivot.y)
+            return
         }
 
         let btop = bound.top
@@ -508,6 +523,7 @@ class SpriteSliced extends Component {
 
 class Button extends Component {
     target = null
+    scale = 0
 
     constructor(node) {
         super(node)
@@ -515,19 +531,89 @@ class Button extends Component {
         this.target = node.getComponent(BoundBox2D)
     }
 
-    check(x, y) {
+    check(x, y, state) {
         this.node.updateWorld()
 
-        return this.target.checkInside(x, y)
+        if (this.target.checkInside(x, y)) {
+            if (state == 0) this.scale = .9
+            if (state == 3) this.scale = 1
+
+            return true
+        }
     }
 
-    // update(dt) {
+    update(dt) {
+        let s0 = this.scale
+        if (s0 == 0) return
 
-    // }
+        let scale = this.node.scale
+        let s1 = scale.x
+        s1 += Math.sign(s0 - s1) * dt
+        if (Math.abs(s0 - s1) < .001) {
+            s1 = s0
+            this.scale = 0
+        }
+
+        scale.x = s1
+        scale.y = s1
+
+        this.node.isDirty = true
+    }
+}
+
+class Toggle extends Component {
+    // target = null
+    // checkmark = null
+    scale = 0
+
+    // isChecked = true
+
+    constructor(node) {
+        super(node)
+
+        this.target = node.getComponent(BoundBox2D)
+        this.checkmark = node.children[0]
+
+        this.isChecked = this.checkmark.active
+    }
+
+    check(x, y, state) {
+        this.node.updateWorld()
+
+        if (this.target.checkInside(x, y)) {
+            if (state == 0) this.scale = .9
+            if (state == 3) this.scale = 1
+
+            return true
+        }
+    }
+
+    update(dt) {
+        let s0 = this.scale
+        if (s0 == 0) return
+
+        let scale = this.node.scale
+        let s1 = scale.x
+        s1 += Math.sign(s0 - s1) * dt
+        if (Math.abs(s0 - s1) < .001) {
+            s1 = s0
+            this.scale = 0
+
+            if(s0 == 1) {
+                this.isChecked = !this.isChecked
+                this.checkmark.setActive(this.isChecked)
+            }
+        }
+
+        scale.x = s1
+        scale.y = s1
+
+        this.node.isDirty = true
+    }
 }
 
 class ProgressBar extends Component {
-    progress = 0
+    value = 0
     background = null
     fill = null
 
@@ -540,18 +626,18 @@ class ProgressBar extends Component {
         fill.setAlignment(0, -1, 0, 0, 0, 0)
 
         this.fill = fill
-        this.set(fill.size.x / this.background.size.x)
+        this.value = fill.size.x / this.background.size.x
     }
 
-    set(progress) {
-        this.progress = Math.max(Math.min(progress, 1.), 0.)
+    set(value) {
+        this.value = Math.max(Math.min(value, 1.), 0.)
 
         let fill = this.fill
-        let width = this.background.size.x * this.progress
+        let width = this.background.size.x * this.value
         fill.setSize(width, fill.size.y, fill.pivot.x, fill.pivot.y)
     }
 
-    get() { return this.progress }
+    get() { return this.value }
 }
 
 let root = new Node
@@ -559,25 +645,33 @@ let camera = null
 let designWidth = 640
 let designHeight = 960
 let textures = {
-    tiny: {
-        width: 2,
-        height: 2,
-        native: null
-    },
-    red: {
-        width: 2,
-        height: 2,
-        native: null
-    },
+    // tiny: {
+    //     width: 2,
+    //     height: 2,
+    //     native: null
+    // },
+    // red: {
+    //     width: 2,
+    //     height: 2,
+    //     native: null
+    // },
     progress_bg: {
         width: 510,
         height: 32,
-        native: null
+        native: null,
+        top: 0,
+        bottom: 0,
+        left: 20,
+        right: 20
     },
     progress_fill: {
         width: 56,
         height: 28,
-        native: null
+        native: null,
+        top: 0,
+        bottom: 0,
+        left: 15,
+        right: 15
     }
 }
 
@@ -585,7 +679,7 @@ var init = function () {
     beginScene()
 
     for (let i in textures) {
-        textures[i].native = globalThis.loadImage(i)
+        textures[i].native = globalThis.loadImage(i + '.ktx2')
     }
 
     new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
@@ -594,16 +688,27 @@ var init = function () {
     node.position.z = 1
     camera = new Camera(node)
 
+    for (let i = 0; i < 20; i++) {
+        node = root.addChild()
+        new SpriteSliced(node, textures.progress_bg, 200, 28)
+        node.getComponent(BoundBox2D).setAlignment(1, -1, 50 * (i + 1), 0, 30, 0)
+
+        let child = node.addChild()
+        new SpriteSliced(child, textures.progress_fill, 200, 28)
+
+        new ProgressBar(node).set(i * .02)
+
+        new Button(node)
+    }
+
     node = root.addChild()
-    new SpriteSliced(node, textures.progress_bg, 200, 28, 0, 0, 20, 20)
-    node.getComponent(BoundBox2D).setAlignment(1, -1, 30, 0, 30, 0)
+    new SpriteSliced(node, textures.progress_bg, 50, 28)
+    node.getComponent(BoundBox2D).setAlignment(1, 1, 50, 0, 0, 50)
 
     let child = node.addChild()
-    new SpriteSliced(child, textures.progress_fill, 200, 28, 0, 0, 15, 15)
+    new SpriteSliced(child, textures.progress_fill, 50, 28)
 
-    new ProgressBar(node)
-
-    new Button(node)
+    new Toggle(node)
 }
 
 var input = {
@@ -669,8 +774,7 @@ var checkInput = function (list) {
     let y = input.y * input.scale
 
     for (let i of list) {
-        if (i.check(x, y)) {
-            // globalThis.log('aaaa')
+        if (i.check(x, y, state)) {
             break
         }
     }
@@ -685,21 +789,24 @@ var update = function (dt) {
     while (id < a.length) {
         let children = a[id++].children
         for (let i of children) {
+            if (!i.active) continue
+
             for (let c of i.components) {
                 c.enabled && c.update && c.update(dt)
-                c.enabled && (c instanceof Button) && interactables.push(c)
+                c.enabled && ((c instanceof Button) || (c instanceof Toggle)) && interactables.push(c)
             }
 
-            i.active && a.push(i)
+            a.push(i)
         }
     }
 
     // let target0 = root.children[2].children[0]
     // target0.rotation.z += .01
-
-    let progress = root.children[1].getComponent(ProgressBar)
-    let c = t * .01
-    progress.set(c - Math.floor(c))
+    for (let i = 1; i < root.children.length - 1; i++) {
+        let progressBar = root.children[i].getComponent(ProgressBar)
+        let c = progressBar.get() + dt
+        progressBar.set(c - Math.floor(c))
+    }
 
     // a.push(target0)
     a = a.filter(i => { return i.isDirty })

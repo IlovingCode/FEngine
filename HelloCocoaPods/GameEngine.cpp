@@ -168,7 +168,7 @@ JSCALLBACK(loadImage) {
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + (filename + ".ktx2")) << endl;
 
-    ifstream file(parent + (filename + ".ktx2"), ios::binary);
+    ifstream file(parent + filename, ios::binary);
     const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
 
     ktxreader::Ktx2Reader reader(*engine);
@@ -216,13 +216,19 @@ JSCALLBACK(updateRenderer) {
 JSCALLBACK(updateMaterial) {
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     bool isMask = JSValueToBoolean(ctx, arguments[1]);
+    bool isVisible = JSValueToBoolean(ctx, arguments[2]);
     
     auto& rm = engine->getRenderableManager();
-    MaterialInstance* material = rm.getMaterialInstanceAt(rm.getInstance(Entity::import(id)), 0);
+    auto instance = rm.getInstance(Entity::import(id));
+    MaterialInstance* material = rm.getMaterialInstanceAt(instance, 0);
 
-    material->setDepthWrite(isMask);
-    material->setDepthCulling(!isMask);
-    material->setColorWrite(!isMask);
+    if(isVisible) {
+        material->setDepthWrite(isMask);
+        material->setDepthCulling(!isMask);
+        material->setColorWrite(!isMask);
+    }
+    
+    rm.setLayerMask(instance, 0xff, isVisible ? 0xff : 0x00);
 
     return arguments[0];
 }
