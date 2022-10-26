@@ -72,20 +72,20 @@ class Node {
         if (this.active == enabled) return
 
         this.active = enabled
-        this.onActive(this.parent.globalActive && enabled)    
+        this.onActive(this.parent.globalActive && enabled)
     }
 
     onActive(enabled) {
-        if(this.globalActive == enabled) return
+        if (this.globalActive == enabled) return
         this.globalActive = enabled
 
-        for(let i of this.components) {
-            if(i.enabled) {
+        for (let i of this.components) {
+            if (i.enabled) {
                 i.onEnableChanged && i.onEnableChanged(enabled)
             }
         }
 
-        for(let i of this.children) {
+        for (let i of this.children) {
             i.active && i.onActive(enabled)
         }
     }
@@ -112,12 +112,15 @@ class Node {
     }
 
     updateWorld() {
-        let worldTransform = globalThis.getWorldTransform(this.native)
-
         let worldPos = this.worldPosition
-        worldPos.x = worldTransform[1]
-        worldPos.y = worldTransform[2]
-        worldPos.z = worldTransform[3]
+
+        if (this.isDirty) {
+            let worldTransform = globalThis.getWorldTransform(this.native)
+
+            worldPos.x = worldTransform[1]
+            worldPos.y = worldTransform[2]
+            worldPos.z = worldTransform[3]
+        }
 
         return worldPos
     }
@@ -522,7 +525,7 @@ class SpriteSliced extends SpriteSimple {
 }
 
 class Button extends Component {
-    target = null
+    // target = null
     scale = 0
 
     constructor(node) {
@@ -532,25 +535,26 @@ class Button extends Component {
     }
 
     check(x, y, state) {
-        this.node.updateWorld()
-
         if (this.target.checkInside(x, y)) {
             if (state == 0) this.scale = .9
             if (state == 3) this.scale = 1
 
             return true
+        } else {
+            this.scale = -1
         }
     }
 
     update(dt) {
-        let s0 = this.scale
+        let s0 = Math.abs(this.scale)
         if (s0 == 0) return
 
         let scale = this.node.scale
         let s1 = scale.x
         s1 += Math.sign(s0 - s1) * dt
-        if (Math.abs(s0 - s1) < .001) {
+        if (Math.abs(s0 - s1) < .005) {
             s1 = s0
+            this.scale == 1 && this.onClick()
             this.scale = 0
         }
 
@@ -559,56 +563,39 @@ class Button extends Component {
 
         this.node.isDirty = true
     }
+
+    onClick() { }
 }
 
-class Toggle extends Component {
-    // target = null
+class Toggle extends Button {
     // checkmark = null
-    scale = 0
-
     // isChecked = true
 
     constructor(node) {
         super(node)
 
-        this.target = node.getComponent(BoundBox2D)
         this.checkmark = node.children[0]
-
         this.isChecked = this.checkmark.active
     }
 
-    check(x, y, state) {
-        this.node.updateWorld()
-
-        if (this.target.checkInside(x, y)) {
-            if (state == 0) this.scale = .9
-            if (state == 3) this.scale = 1
-
-            return true
-        }
+    onClick() {
+        this.isChecked = !this.isChecked
+        this.checkmark.setActive(this.isChecked)
     }
+}
 
-    update(dt) {
-        let s0 = this.scale
-        if (s0 == 0) return
+class Layout extends Component {
+    constructor(node) {
+        super(node)
 
-        let scale = this.node.scale
-        let s1 = scale.x
-        s1 += Math.sign(s0 - s1) * dt
-        if (Math.abs(s0 - s1) < .001) {
-            s1 = s0
-            this.scale = 0
+        let children = node.children
 
-            if(s0 == 1) {
-                this.isChecked = !this.isChecked
-                this.checkmark.setActive(this.isChecked)
-            }
+        let x = 0
+        let size = node.getComponent(BoundBox2D)
+        for(let i of children) {
+            let bound = i.getComponent(BoundBox2D)
+            x += bound.size.x
         }
-
-        scale.x = s1
-        scale.y = s1
-
-        this.node.isDirty = true
     }
 }
 
@@ -748,8 +735,6 @@ var sendUpdateTransform = function (list) {
     for (let i of list) {
         transformBuffer.set(i.toArray(), offset)
         offset += SEGMENT
-
-        i.isDirty = false
     }
 
     globalThis.updateTransforms(transformBuffer)
@@ -763,6 +748,8 @@ var checkInput = function (list) {
 
     input.stack = state == prevState ? (input.stack + 1) : 0
     input.prevState = input.state
+
+    for (let i of list) i.node.updateWorld()
 
     if (state == 3 && prevState == 3) return // no input
 
@@ -813,6 +800,8 @@ var update = function (dt) {
     a.length > 0 && sendUpdateTransform(a)
 
     checkInput(interactables)
+
+    for (let i of a) i.isDirty = false
 }
 
 init()
