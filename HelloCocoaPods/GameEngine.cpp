@@ -315,6 +315,9 @@ JSCALLBACK(addRenderer){
 
     auto matInstance = mat->createInstance();
     matInstance->setDepthCulling(true);
+    matInstance->setColorWrite(true);
+    matInstance->setDepthWrite(false);
+    
     if(argumentCount > 2) {
         array = JSValueToObject(ctx, arguments[2], nullptr);
         void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
