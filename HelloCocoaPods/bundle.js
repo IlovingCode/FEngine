@@ -224,10 +224,10 @@ class BoundBox2D extends Component {
         let width = this.size.x
         let height = this.size.y
 
-        switch(horizontal) {
+        switch (horizontal) {
             case 0:
                 break
-            case 1: 
+            case 1:
                 this._left = pWidth - (width + this._right)
                 break
             case -1:
@@ -237,10 +237,10 @@ class BoundBox2D extends Component {
                 width = pWidth - (this._left + this._right)
         }
 
-        switch(vertical) {
+        switch (vertical) {
             case 0:
                 break
-            case 1: 
+            case 1:
                 this._bottom = pHeight - (height + this._top)
                 break
             case -1:
@@ -249,16 +249,16 @@ class BoundBox2D extends Component {
             default:
                 height = pHeight - (this._bottom + this._top)
         }
-        
-        this.updateSize(width, height)
+
+        this.updateSize(width, height) && this.alignChildren()
 
         let pos = node.position
-        if(horizontal != 0) {
+        if (horizontal != 0) {
             pos.x = (parent.left + this._left) - this.left
             node.isDirty = true
         }
 
-        if(vertical != 0) {
+        if (vertical != 0) {
             pos.y = (parent.bottom + this._bottom) - this.bottom
             node.isDirty = true
         }
@@ -269,15 +269,15 @@ class BoundBox2D extends Component {
         let pivot = this.pivot
         let hasChanged = false
 
-        if(width != size.x) {
+        if (width != size.x) {
             this.left = -width * pivot.x
             this.right = width + this.left
             size.x = width
 
             hasChanged = true
         }
-        
-        if(height != size.y) {
+
+        if (height != size.y) {
             this.bottom = -height * pivot.y
             this.top = height + this.bottom
             size.y = height
@@ -285,11 +285,12 @@ class BoundBox2D extends Component {
             hasChanged = true
         }
 
-        if(!hasChanged) return
+        if (!hasChanged) return
 
         let cb = this.onBoundChanged
         cb && cb(this)
-        this.alignChildren()
+
+        return true
     }
 
     alignChildren() {
@@ -312,10 +313,13 @@ class BoundBox2D extends Component {
 
     setSize(width, height) {
         let size = this.size
-        if(this.horizontalAlign > 1) width = size.x
-        if(this.verticalAlign > 1) height = size.y
+        if (this.horizontalAlign > 1) width = size.x
+        if (this.verticalAlign > 1) height = size.y
 
-        this.updateSize(width, height) && this.updateAlignment()
+        if (this.updateSize(width, height)) {
+            this.updateAlignment()
+            this.alignChildren()
+        }
     }
 
     setPivot(x, y) {
@@ -323,15 +327,15 @@ class BoundBox2D extends Component {
         let pivot = this.pivot
         let hasChanged = false
 
-        if(x != pivot.x) {
+        if (x != pivot.x) {
             this.left = -size.x * x
             this.right = size.x + this.left
             pivot.x = x
 
             hasChanged = true
         }
-        
-        if(y != pivot.y) {
+
+        if (y != pivot.y) {
             this.bottom = -size.y * y
             this.top = size.y + this.bottom
             pivot.y = y
@@ -339,7 +343,7 @@ class BoundBox2D extends Component {
             hasChanged = true
         }
 
-        if(!hasChanged) return
+        if (!hasChanged) return
 
         let cb = this.onBoundChanged
         cb && cb(this)
@@ -658,12 +662,12 @@ class ScrollView extends Component {
         let max = target.bottom - content.bottom
 
         globalThis.log(min, max)
-        
+
         let pos = content.node.position
         pos.y += this.deltaY * s
 
-        if(pos.y < min) pos.y = min
-        if(pos.y > max) pos.y = max
+        if (pos.y < min) pos.y = min
+        if (pos.y > max) pos.y = max
 
         content.isDirty = true
 
@@ -699,7 +703,7 @@ class Layout extends Component {
         this.spaceY = spaceY
 
         let bound = node.getComponent(BoundBox2D)
-        if(!bound) bound = new BoundBox2D(node, new Vec2(100, 100), new Vec2(.5, .5))
+        if (!bound) bound = new BoundBox2D(node, new Vec2(100, 100), new Vec2(.5, .5))
     }
 
     forceUpdate() {
@@ -746,7 +750,7 @@ class Layout extends Component {
             i.isDirty = true
         }
 
-        // pBound.bottom = 
+        pBound.setSize(pBound.size.x, pBound.top - (ty - maxInRow - bottom))
     }
 }
 
@@ -958,9 +962,9 @@ var update = function (dt) {
 
             for (let c of i.components) {
                 c.enabled && c.update && c.update(dt)
-                c.enabled && 
-                ((c instanceof Button) || (c instanceof Toggle) || (c instanceof ScrollView)) && 
-                interactables.push(c)
+                c.enabled &&
+                    ((c instanceof Button) || (c instanceof Toggle) || (c instanceof ScrollView)) &&
+                    interactables.push(c)
             }
 
             a.push(i)
