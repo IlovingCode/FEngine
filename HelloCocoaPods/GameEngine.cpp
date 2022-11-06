@@ -266,12 +266,12 @@ JSCALLBACK(addRenderer){
     size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
 
-    static IndexBuffer *ib, *ib_9;
+    static IndexBuffer *ib_4, *ib_16, *ib_17;
     static Material *mat;
     
     if(mat == nullptr) {
-        static constexpr uint16_t INDICES[6] = { 0, 1, 2, 3, 2, 1 };
-        static constexpr uint16_t INDICES_9[54] = {
+        static constexpr uint16_t INDICES_4[6] = { 0, 1, 2, 3, 2, 1 };
+        static constexpr uint16_t INDICES_16[54] = {
              0,  1,  2,  3,  2,  1,
              1,  4,  3,  6,  3,  4,
              4,  5,  6,  7,  6,  5,
@@ -281,6 +281,12 @@ JSCALLBACK(addRenderer){
              8,  9, 10, 11, 10,  9,
              9, 12, 11, 14, 11, 12,
             12, 13, 14, 15, 14, 13,
+        };
+        static constexpr uint16_t INDICES_17[24] = {
+             1,  2,  8,  3,  4,  8,
+             5,  9,  8, 10, 15,  8,
+            16, 14,  8, 13, 12,  8,
+            11,  7,  8,  6,  0,  8,
         };
 
         // This file is compiled via the matc tool. See the "Run Script" build phase.
@@ -292,17 +298,23 @@ JSCALLBACK(addRenderer){
             .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
             .build(*engine);
         
-        ib = IndexBuffer::Builder()
+        ib_4 = IndexBuffer::Builder()
             .indexCount(6)
             .bufferType(IndexBuffer::IndexType::USHORT)
             .build(*engine);
-        ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, 12, nullptr));
+        ib_4->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_4, 12, nullptr));
         
-        ib_9 = IndexBuffer::Builder()
+        ib_16 = IndexBuffer::Builder()
             .indexCount(54)
             .bufferType(IndexBuffer::IndexType::USHORT)
             .build(*engine);
-        ib_9->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_9, 108, nullptr));
+        ib_16->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_16, 108, nullptr));
+        
+        ib_17 = IndexBuffer::Builder()
+            .indexCount(24)
+            .bufferType(IndexBuffer::IndexType::USHORT)
+            .build(*engine);
+        ib_17->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_17, 48, nullptr));
     }
     
     VertexBuffer* vb = VertexBuffer::Builder()
@@ -325,7 +337,7 @@ JSCALLBACK(addRenderer){
         matInstance->setParameter("texture", texture, TextureSampler());
     }
 
-    auto ib_t = count > 16 ? ib_9 : ib;
+    auto ib_t = count > 64 ? ib_17 : (count > 16 ? ib_16 : ib_4);
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
         .material(0, matInstance)

@@ -549,10 +549,67 @@ class SpriteSliced extends SpriteSimple {
 
         return vb
     }
+}
 
-    // setSprite(image, width, height) {
-    //     globalThis.updateRenderer(this.native, this.fillBuffer(width, height))
-    // }
+
+class SpriteRadial extends SpriteSimple {
+    createData(image) {
+        let left = 0
+        let right = 1
+        let top = 1
+        let bottom = 0
+        let h2 = (left + right) * .5
+        let v2 = (top + bottom) * .5
+
+        let array = [
+            0, 0, left, bottom,     //0-0
+            0, 0, left, bottom,     //1-0
+            0, 0, h2, bottom,       //2-1
+            0, 0, h2, bottom,       //3-1
+            0, 0, right, bottom,    //4-2
+            0, 0, right, bottom,    //5-2
+            0, 0, left, v2,         //6-3
+            0, 0, left, v2,         //7-3
+            0, 0, h2, v2,           //8-4
+            0, 0, right, v2,        //9-5
+            0, 0, right, v2,        //10-5
+            0, 0, left, top,        //11-6
+            0, 0, left, top,        //12-6
+            0, 0, h2, top,          //13-7
+            0, 0, h2, top,          //14-7
+            0, 0, right, top,       //15-8
+            0, 0, right, top,       //16-8
+        ]
+        return new Float32Array(array)
+    }
+
+    fillBuffer(bound) {
+        let top = bound.top
+        let bottom = bound.bottom
+        let left = bound.left
+        let right = bound.right
+
+        let vb = this.vb
+        vb[0] = left, vb[1] = bottom
+        vb[4] = left + 50, vb[5] = bottom
+        vb[8] = 0, vb[9] = bottom
+        vb[12] = 0, vb[13] = bottom
+        vb[16] = right, vb[17] = bottom
+        vb[20] = right, vb[21] = bottom
+        vb[24] = left//, vb[25] = 0
+        vb[28] = left//, vb[29] = 0
+        // vb[32] = 0, vb[33] = 0
+        vb[36] = right//, vb[37] = 0
+        vb[40] = right//, vb[41] = 0
+        vb[44] = left, vb[45] = top
+        vb[48] = left, vb[49] = top
+        vb[52] = 0, vb[53] = top
+        vb[56] = 0, vb[57] = top
+        vb[60] = right, vb[61] = top
+        vb[64] = right, vb[65] = top
+
+        return vb
+    } 
 }
 
 class Button extends Component {
@@ -632,7 +689,8 @@ class ScrollView extends Component {
 
     setContent(node) {
         let content = node.getComponent(BoundBox2D)
-        // content.setPivot(content.pivot.x, 1)
+        node.position.y = this.target.top
+        node.isDirty = true
 
         this.content = content
     }
@@ -658,10 +716,8 @@ class ScrollView extends Component {
 
         let content = this.content
         let target = this.target
-        let min = target.top - content.top
-        let max = target.bottom - content.bottom
-
-        globalThis.log(min, max)
+        let min = target.top
+        let max = target.top + (content.size.y - target.size.y)
 
         let pos = content.node.position
         pos.y += this.deltaY * s
@@ -669,7 +725,7 @@ class ScrollView extends Component {
         if (pos.y < min) pos.y = min
         if (pos.y > max) pos.y = max
 
-        content.isDirty = true
+        content.node.isDirty = true
 
         if (this.scale < 0) {
             s -= dt
@@ -703,7 +759,10 @@ class Layout extends Component {
         this.spaceY = spaceY
 
         let bound = node.getComponent(BoundBox2D)
-        if (!bound) bound = new BoundBox2D(node, new Vec2(100, 100), new Vec2(.5, .5))
+        bound.alignChildren = () => { }
+
+        if (!bound) bound = new BoundBox2D(node, new Vec2(100, 100), new Vec2(.5, 1))
+        else bound.setPivot(bound.pivot.x, 1)
     }
 
     forceUpdate() {
@@ -782,6 +841,35 @@ class ProgressBar extends Component {
     get() { return this.value }
 }
 
+class ProgressCircle extends Component {
+    value = 1
+    background = null
+    fill = null
+
+    constructor(node) {
+        super(node)
+        this.background = node.getComponent(BoundBox2D)
+
+        let fill = node.children[0].getComponent(BoundBox2D)
+        // fill.pivot.set(.5, .5)
+        // fill.setAlignment(0, 0, 0, 0, 0, 0)
+        // fill.node.position.set(0, 0, 0)
+        // fill.node.isDirty = true
+
+        this.fill = fill
+    }
+
+    set(value) {
+        this.value = Math.max(Math.min(value, 1.), 0.)
+
+        let fill = this.fill
+        let width = this.background.size.x * this.value
+        fill.setSize(width, fill.size.y)
+    }
+
+    get() { return this.value }
+}
+
 let root = new Node
 let camera = null
 let designWidth = 640
@@ -833,18 +921,18 @@ var init = function () {
     node.position.z = 1
     camera = new Camera(node)
 
-    // for (let i = 0; i < 20; i++) {
-    //     node = root.addChild()
-    //     new SpriteSliced(node, textures.progress_bg, 200, 28)
-    //     node.getComponent(BoundBox2D).setAlignment(1, -1, 50 * (i + 1), 0, 30, 0)
+    for (let i = 0; i < 2; i++) {
+        node = root.addChild()
+        new SpriteSliced(node, textures.progress_bg, 200, 28)
+        node.getComponent(BoundBox2D).setAlignment(1, -1, 50 * (i + 1), 0, 30, 0)
 
-    //     let child = node.addChild()
-    //     new SpriteSliced(child, textures.progress_fill, 200, 28)
+        let child = node.addChild()
+        new SpriteSliced(child, textures.progress_fill, 200, 28)
 
-    //     new ProgressBar(node).set(i * .02)
+        new ProgressBar(node).set(i * .2)
 
-    //     new Button(node)
-    // }
+        new Button(node)
+    }
 
     node = root.addChild()
     new SpriteSliced(node, textures.progress_bg, 50, 28)
@@ -856,24 +944,24 @@ var init = function () {
     new Toggle(node)
 
     node = root.addChild()
-    new SpriteSimple(node, textures.tiny, 300, 450)
+    new SpriteRadial(node, textures.tiny, 300, 300)
 
-    node = node.addChild()
-    node.position.z = -.1
-    new SpriteSimple(node, textures.tiny, 250, 400).setMask(true)
-    let scrollView = new ScrollView(node)
+    // node = node.addChild()
+    // node.position.z = -.1
+    // new SpriteSimple(node, textures.tiny, 250, 400).setMask(true)
+    // let scrollView = new ScrollView(node)
 
-    node = node.addChild()
-    new BoundBox2D(node, new Vec2(250, 400), new Vec2(.5, .5))
-    new Layout(node, 10, 10, 10, 10, 10, 10)
+    // node = node.addChild()
+    // new BoundBox2D(node, new Vec2(250, 100), new Vec2(.5, .5))
+    // new Layout(node, 10, 10, 10, 10, 10, 10)
 
-    scrollView.setContent(node)
+    // scrollView.setContent(node)
 
-    for (let i = 0; i < 200; i++) {
-        let child = node.addChild()
+    // for (let i = 0; i < 200; i++) {
+    //     let child = node.addChild()
 
-        new SpriteSimple(child, textures.red, 20, 20)
-    }
+    //     new SpriteSimple(child, textures.red, 20, 20)
+    // }
 }
 
 var input = {
@@ -973,11 +1061,11 @@ var update = function (dt) {
 
     // let target0 = root.children[2].children[0]
     // target0.rotation.z += .01
-    // for (let i = 1; i < root.children.length - 1; i++) {
-    //     let progressBar = root.children[i].getComponent(ProgressBar)
-    //     let c = progressBar.get() + dt
-    //     progressBar.set(c - Math.floor(c))
-    // }
+    for (let i = 2; i < 4; i++) {
+        let progressBar = root.children[i].getComponent(ProgressBar)
+        let c = progressBar.get() + dt
+        progressBar.set(c - Math.floor(c))
+    }
 
     // a.push(target0)
     a = a.filter(i => { return i.isDirty })
