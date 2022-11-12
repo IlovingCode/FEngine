@@ -334,7 +334,7 @@ JSCALLBACK(addRenderer){
         array = JSValueToObject(ctx, arguments[2], nullptr);
         void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
         Texture* texture = static_cast<Texture*>(data);
-        matInstance->setParameter("texture", texture, TextureSampler());
+        matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
     }
 
     auto ib_t = count > 64 ? ib_17 : (count > 16 ? ib_16 : ib_4);

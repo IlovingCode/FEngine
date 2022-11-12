@@ -553,6 +553,8 @@ class SpriteSliced extends SpriteSimple {
 
 
 class SpriteRadial extends SpriteSimple {
+    // bias = [0, 0, 0, 0, 0, 0, 0, 0]
+
     createData(image) {
         let left = 0
         let right = 1
@@ -560,6 +562,8 @@ class SpriteRadial extends SpriteSimple {
         let bottom = 0
         let h2 = (left + right) * .5
         let v2 = (top + bottom) * .5
+
+        this.bias = [0, 1, 0, 1, 0, 1, 0, 1]
 
         let array = [
             0, 0, left, bottom,     //0-0
@@ -588,28 +592,49 @@ class SpriteRadial extends SpriteSimple {
         let bottom = bound.bottom
         let left = bound.left
         let right = bound.right
+        let bias = this.bias
 
         let vb = this.vb
-        vb[0] = left, vb[1] = bottom
-        vb[4] = left + 50, vb[5] = bottom
-        vb[8] = 0, vb[9] = bottom
+        //map = [56, 61, 37, 16, 8, 1, 29, 48]
+        // 6 7 8
+        // 3 4 5
+        // 0 1 2 
+
+        vb[0] = left, vb[1] = bias[5] * left
+        vb[4] = left, vb[5] = bottom
+        vb[8] = bias[4] * bottom, vb[9] = bottom
         vb[12] = 0, vb[13] = bottom
-        vb[16] = right, vb[17] = bottom
+        vb[16] = bias[3] * -bottom, vb[17] = bottom
         vb[20] = right, vb[21] = bottom
         vb[24] = left//, vb[25] = 0
-        vb[28] = left//, vb[29] = 0
+        vb[28] = left, vb[29] = bias[6] * -left
         // vb[32] = 0, vb[33] = 0
-        vb[36] = right//, vb[37] = 0
+        vb[36] = right, vb[37] = bias[2] * -right
         vb[40] = right//, vb[41] = 0
         vb[44] = left, vb[45] = top
-        vb[48] = left, vb[49] = top
+        vb[48] = bias[7] * -top, vb[49] = top
         vb[52] = 0, vb[53] = top
-        vb[56] = 0, vb[57] = top
-        vb[60] = right, vb[61] = top
+        vb[56] = bias[0] * top, vb[57] = top
+        vb[60] = right, vb[61] = bias[1] * right
         vb[64] = right, vb[65] = top
 
         return vb
-    } 
+    }
+
+    setAngle(angle) {
+        let count = Math.floor(angle / (Math.PI / 4))
+        angle -= count * (Math.PI / 4)
+        let bias = this.bias
+
+        for (let i = 0; i < bias.length; i++) {
+            let num = i % 2
+
+            if(count == i) {
+                bias[i] = num == 0 ? Math.tan(angle) : Math.tan(Math.PI / 4 - angle)
+                // bias[i] = count > i ? (1 - num) : num
+            } else bias[i] = count > i ? (1 - num) : num
+        }
+    }
 }
 
 class Button extends Component {
@@ -663,6 +688,7 @@ class Toggle extends Button {
         super(node)
 
         this.checkmark = node.children[0]
+1
         this.isChecked = this.checkmark.active
     }
 
@@ -944,24 +970,28 @@ var init = function () {
     new Toggle(node)
 
     node = root.addChild()
-    new SpriteRadial(node, textures.tiny, 300, 300)
+    new SpriteSimple(node, textures.tiny, 300, 300)
 
-    // node = node.addChild()
-    // node.position.z = -.1
-    // new SpriteSimple(node, textures.tiny, 250, 400).setMask(true)
-    // let scrollView = new ScrollView(node)
+    node = node.addChild()
+    node.position.z = -.1
+    new SpriteSimple(node, textures.tiny, 250, 250).setMask(true)
+    let scrollView = new ScrollView(node)
 
-    // node = node.addChild()
-    // new BoundBox2D(node, new Vec2(250, 100), new Vec2(.5, .5))
-    // new Layout(node, 10, 10, 10, 10, 10, 10)
+    node = node.addChild()
+    new BoundBox2D(node, new Vec2(250, 100), new Vec2(.5, .5))
+    new Layout(node, 10, 10, 10, 10, 10, 10)
 
-    // scrollView.setContent(node)
+    scrollView.setContent(node)
 
-    // for (let i = 0; i < 200; i++) {
-    //     let child = node.addChild()
+    for (let i = 0; i < 200; i++) {
+        let child = node.addChild()
 
-    //     new SpriteSimple(child, textures.red, 20, 20)
-    // }
+        new SpriteSimple(child, textures.red, 20, 20)
+    }
+
+    node = root.addChild()
+    node.position.set(0, 250, 0)
+    new SpriteRadial(node, textures.red, 50, 50)
 }
 
 var input = {
@@ -1016,18 +1046,23 @@ var checkInput = function (list) {
     input.stack = state == prevState ? (input.stack + 1) : 0
     input.prevState = input.state
 
-    for (let i of list) i.node.updateWorld()
 
     if (state == 3 && prevState == 3) return // no input
 
     // let isHold = state == 0 && prevState == 0
-    // let isTap = state == 0 && prevState != 0
+    let isTap = state == 0 && prevState != 0
     // let isClick = state == 3 && prevState == 0
 
     let x = input.x * input.scale
     let y = input.y * input.scale
 
+    if (isTap) {
+        input.prevX = x
+        input.prevY = y
+    }
+
     for (let i of list) {
+        i.node.updateWorld()
         if (i.check(x, y, state)) {
             break
         }
@@ -1040,7 +1075,7 @@ var checkInput = function (list) {
 var update = function (dt) {
     let a = [root]
     let interactables = []
-    t += dt * 100
+    t += dt
 
     let id = 0
     while (id < a.length) {
@@ -1066,6 +1101,11 @@ var update = function (dt) {
         let c = progressBar.get() + dt
         progressBar.set(c - Math.floor(c))
     }
+
+    // globalThis.log(root.children.length)
+    let radial = root.children[6].getComponent(SpriteRadial)
+    radial.setAngle(t % (Math.PI * 2))
+    radial.onBoundUpdated(radial.node.getComponent(BoundBox2D))
 
     // a.push(target0)
     a = a.filter(i => { return i.isDirty })
