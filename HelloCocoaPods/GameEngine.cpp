@@ -11,6 +11,9 @@
 // defines DEBUG=1. So, we simply undefine it here. This will be fixed in the next release.
 #undef DEBUG
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
+
 // These are all C++ headers, so make sure the type of this file is Objective-C++ source.
 #include <ktxreader/Ktx2Reader.h>
 
@@ -28,6 +31,7 @@
 #include <filament/MaterialInstance.h>
 #include <filament/TransformManager.h>
 #include <filament/TextureSampler.h>
+#include <filament/Texture.h>
 
 #include <utils/Entity.h>
 #include <utils/Path.h>
@@ -35,7 +39,7 @@
 
 #include <gltfio/math.h>
 
-#include <JavaScriptCore/JavaScriptCore.h>
+#include <JavaScriptCore/JavaScript.h>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -134,7 +138,7 @@ JSCALLBACK(getWorldTransform){
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
 //    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-    Float32* d = static_cast<Float32*>(buffer);
+    float* d = static_cast<float*>(buffer);
     
     auto& tcm = engine->getTransformManager();
     Entity parent = Entity::import(d[0]);
@@ -258,6 +262,170 @@ JSCALLBACK(updateMaterial) {
 //    return arguments[0];
 //}
 
+JSCALLBACK(renderText) {
+    string filename = "cmunrm.ttf";
+    const Path parent = Path::getCurrentExecutable().getParent();
+    
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+//    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    float* d = static_cast<float*>(buffer);
+    
+
+    ifstream file(parent + filename, ios::binary);
+    const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
+    
+    /* prepare font */
+    stbtt_fontinfo info;
+    if (!stbtt_InitFont(&info, contents.data(), 0)) return nullptr;
+    
+    int b_w = 512; /* bitmap width */
+    int b_h = 512; /* bitmap height */
+    int l_h = 64; /* line height */
+
+    /* create a bitmap for the phrase */
+    unsigned char* bitmap = (unsigned char*)calloc(b_w * b_h, sizeof(unsigned char));
+    
+    /* calculate font scaling */
+    float scale = stbtt_ScaleForPixelHeight(&info, l_h);
+
+    const char* word = "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890!@#$%^&*()-=[];',./_+{}:\"<>?\\|`~";
+    
+    int x = 0;
+    int y = 0;
+       
+    int ascent, descent, lineGap;
+    stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
+    
+    ascent = roundf(ascent * scale);
+    descent = roundf(descent * scale);
+    
+    d[0] = ascent;
+    d[1] = descent;
+    d[2] = scale;
+    
+    for (int i = 0; i < strlen(word); ++i)
+    {
+        /* how wide is this character */
+        int ax;
+        int lsb;
+        stbtt_GetCodepointHMetrics(&info, word[i], &ax, &lsb);
+        /* (Note that each Codepoint call has an alternative Glyph version which caches the work required to lookup the character word[i].) */
+
+        /* get bounding box for character (may be offset to account for chars that dip above or below the line) */
+        int c_x1, c_y1, c_x2, c_y2;
+        stbtt_GetCodepointBitmapBox(&info, word[i], scale, scale, &c_x1, &c_y1, &c_x2, &c_y2);
+        
+        /* compute y (different characters have different heights) */
+//        int y = ascent + c_y1;
+        if(x + roundf(ax * scale) > b_w) {
+            x = 0;
+            y += ascent - descent + lineGap * scale;
+        }
+        
+        /* render character (stride and offset is important here) */
+        int byteOffset = x + roundf(lsb * scale) + (y + ascent + c_y1) * b_w;
+        stbtt_MakeCodepointBitmap(&info, bitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, b_w, scale, scale, word[i]);
+
+        d[i * 6 + 3] = ax;
+        d[i * 6 + 4] = lsb;
+        d[i * 6 + 5] = (x + roundf(lsb * scale)) / b_w;
+        d[i * 6 + 6] = (x + roundf(ax * scale)) / b_w;
+        d[i * 6 + 7] = y + ascent + c_y1;
+        d[i * 6 + 8] = y + ascent + c_y2;
+        
+        /* advance x */
+        x += roundf(ax * scale);
+        
+        /* add kerning */
+//        int kern;
+//        kern = stbtt_GetCodepointKernAdvance(&info, word[i], word[i + 1]);
+//        x += roundf(kern * scale);
+    }
+    
+    Texture* texture = Texture::Builder()
+        .format(Texture::InternalFormat::R8)
+        .width(b_w)
+        .height(b_h)
+        .build(*engine);
+    
+    Texture::PixelBufferDescriptor::Callback freeCallback = [](void* buf, size_t, void* userdata) {
+        free(buf);
+    };
+
+    Texture::PixelBufferDescriptor pbd(
+            bitmap, b_w * b_h,
+            Texture::PixelBufferDescriptor::PixelDataFormat::R,
+            Texture::PixelBufferDescriptor::PixelDataType::UBYTE,
+            freeCallback,
+            nullptr);
+    
+    texture->setImage(*engine, 0, move(pbd));
+    
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, texture, sizeof(texture), nullptr, nullptr, nullptr);
+}
+
+JSCALLBACK(addText) {
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    Entity entity = Entity::import(id);
+    
+    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+    size_t vc = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    
+    array = JSValueToObject(ctx, arguments[2], nullptr);
+    size_t ic = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* INDICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+
+    static Material *mat;
+    
+    if(mat == nullptr) {
+        // This file is compiled via the matc tool. See the "Run Script" build phase.
+        constexpr uint8_t BAKED_COLOR_PACKAGE[] = {
+            #include "bakedColor.inc"
+        };
+        
+        mat = Material::Builder()
+            .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
+            .build(*engine);
+        
+        array = JSValueToObject(ctx, arguments[3], nullptr);
+        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+        Texture* texture = static_cast<Texture*>(data);
+        mat->setDefaultParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+    }
+    
+    IndexBuffer* ib = IndexBuffer::Builder()
+        .indexCount((uint32_t)ic)
+        .bufferType(IndexBuffer::IndexType::USHORT)
+        .build(*engine);
+    ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, ic * 2, nullptr));
+    
+    VertexBuffer* vb = VertexBuffer::Builder()
+        .vertexCount((uint32_t)vc / 4)
+        .bufferCount(1)
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 16)
+        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 8, 16)
+        .build(*engine);
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, vc * 4, nullptr));
+
+    auto matInstance = mat->createInstance();
+    matInstance->setDepthCulling(true);
+    matInstance->setColorWrite(true);
+    matInstance->setDepthWrite(false);
+
+    RenderableManager::Builder(1)
+        .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
+        .material(0, matInstance)
+        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
+        .culling(true)
+        .receiveShadows(false)
+        .castShadows(false)
+        .build(*engine, entity);
+    
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, vb, sizeof(vb), nullptr, nullptr, nullptr);
+}
+
 JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
@@ -341,8 +509,8 @@ JSCALLBACK(addRenderer){
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
         .material(0, matInstance)
-        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib_t, 0, ib_t->getIndexCount())
-        .culling(false)
+        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib_t)
+        .culling(true)
         .receiveShadows(false)
         .castShadows(false)
         .build(*engine, entity);
@@ -354,7 +522,7 @@ JSCALLBACK(updateTransforms){
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
     size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-    Float32* d = static_cast<Float32*>(buffer);
+    float* d = static_cast<float*>(buffer);
 
 //    cout << count << endl;
     size_t strike = 10;
@@ -477,6 +645,8 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("updateMaterial", updateMaterial, globalObject);
     registerNativeFunction("getWorldTransform", getWorldTransform, globalObject);
     registerNativeFunction("loadImage", loadImage, globalObject);
+    registerNativeFunction("addText", addText, globalObject);
+    registerNativeFunction("renderText", renderText, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + filename) << endl;
@@ -486,7 +656,6 @@ GameEngine::GameEngine(void* nativeWindow){
     file.close();
     
     JSStringRef script = JSStringCreateWithUTF8CString(buffer.str().c_str());
-//    JSStringRef script = JSStringCreateWithUTF8CString(source);
     JSValueRef exception = nullptr;
     JSEvaluateScript(globalContext, script, nullptr, nullptr, 0, &exception);
     if(exception) cout << JSValueToStdString(globalContext, exception);

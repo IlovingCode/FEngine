@@ -16,10 +16,14 @@
 		43C0904824B7DCE9009D291E /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 43C0904624B7DCE9009D291E /* LaunchScreen.storyboard */; };
 		43C0904B24B7DCE9009D291E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 43C0904A24B7DCE9009D291E /* main.m */; };
 		AE1D8A28284E989C0031A866 /* bakedColor.inc in Sources */ = {isa = PBXBuildFile; fileRef = AE1D8A23284E989C0031A866 /* bakedColor.inc */; };
-		AE1D8A29284E989C0031A866 /* image.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AE1D8A24284E989C0031A866 /* image.ktx2 */; };
 		AE1D8A2A284E989C0031A866 /* bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = AE1D8A25284E989C0031A866 /* bundle.js */; };
 		AE1D8A2B284E989C0031A866 /* GameEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AE1D8A27284E989C0031A866 /* GameEngine.cpp */; };
 		AE1D8A2D284E98EA0031A866 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */; };
+		AE6655612946590500E14DCB /* cmunrm.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AE6655602946590500E14DCB /* cmunrm.ttf */; };
+		AE84734D28EA260E00BDB287 /* red.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AE84734C28EA260E00BDB287 /* red.ktx2 */; };
+		AE85DEF728FB0F1C00521ABE /* progress_fill.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AE85DEF528FB0F1C00521ABE /* progress_fill.ktx2 */; };
+		AE85DEF828FB0F1C00521ABE /* progress_bg.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AE85DEF628FB0F1C00521ABE /* progress_bg.ktx2 */; };
+		AEFC712928D7598E0029C879 /* tiny.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AEFC712828D7598E0029C879 /* tiny.ktx2 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,11 +42,16 @@
 		43C0905124B7DF20009D291E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		9B0B8E3424AB80B4FB0F5FF1 /* Pods-HelloCocoaPods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.release.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.release.xcconfig"; sourceTree = "<group>"; };
 		AE1D8A23284E989C0031A866 /* bakedColor.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = bakedColor.inc; sourceTree = "<group>"; };
-		AE1D8A24284E989C0031A866 /* image.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = image.ktx2; sourceTree = "<group>"; };
 		AE1D8A25284E989C0031A866 /* bundle.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = bundle.js; sourceTree = "<group>"; };
 		AE1D8A26284E989C0031A866 /* GameEngine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = GameEngine.hpp; sourceTree = "<group>"; };
 		AE1D8A27284E989C0031A866 /* GameEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GameEngine.cpp; sourceTree = "<group>"; };
 		AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		AE6655602946590500E14DCB /* cmunrm.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = cmunrm.ttf; sourceTree = "<group>"; };
+		AE665562294659AB00E14DCB /* stb_truetype.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_truetype.h; sourceTree = "<group>"; };
+		AE84734C28EA260E00BDB287 /* red.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = red.ktx2; sourceTree = "<group>"; };
+		AE85DEF528FB0F1C00521ABE /* progress_fill.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = progress_fill.ktx2; sourceTree = "<group>"; };
+		AE85DEF628FB0F1C00521ABE /* progress_bg.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = progress_bg.ktx2; sourceTree = "<group>"; };
+		AEFC712828D7598E0029C879 /* tiny.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = tiny.ktx2; sourceTree = "<group>"; };
 		D8F6B088AA46E901D4C80A53 /* libPods-HelloCocoaPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HelloCocoaPods.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DBDD44F53C2D94EF626D2238 /* Pods-HelloCocoaPods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.debug.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -81,11 +90,16 @@
 		43C0903724B7DCE8009D291E /* HelloCocoaPods */ = {
 			isa = PBXGroup;
 			children = (
+				AE85DEF628FB0F1C00521ABE /* progress_bg.ktx2 */,
+				AE85DEF528FB0F1C00521ABE /* progress_fill.ktx2 */,
+				AEFC712828D7598E0029C879 /* tiny.ktx2 */,
 				AE1D8A23284E989C0031A866 /* bakedColor.inc */,
 				AE1D8A25284E989C0031A866 /* bundle.js */,
 				AE1D8A27284E989C0031A866 /* GameEngine.cpp */,
+				AE665562294659AB00E14DCB /* stb_truetype.h */,
+				AE6655602946590500E14DCB /* cmunrm.ttf */,
+				AE84734C28EA260E00BDB287 /* red.ktx2 */,
 				AE1D8A26284E989C0031A866 /* GameEngine.hpp */,
-				AE1D8A24284E989C0031A866 /* image.ktx2 */,
 				43C0903824B7DCE8009D291E /* AppDelegate.h */,
 				43C0903924B7DCE8009D291E /* AppDelegate.m */,
 				43C0903B24B7DCE8009D291E /* SceneDelegate.h */,
@@ -178,9 +192,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AE1D8A29284E989C0031A866 /* image.ktx2 in Resources */,
 				43C0904824B7DCE9009D291E /* LaunchScreen.storyboard in Resources */,
+				AE84734D28EA260E00BDB287 /* red.ktx2 in Resources */,
+				AEFC712928D7598E0029C879 /* tiny.ktx2 in Resources */,
 				AE1D8A2A284E989C0031A866 /* bundle.js in Resources */,
+				AE85DEF828FB0F1C00521ABE /* progress_bg.ktx2 in Resources */,
+				AE6655612946590500E14DCB /* cmunrm.ttf in Resources */,
+				AE85DEF728FB0F1C00521ABE /* progress_fill.ktx2 in Resources */,
 				43C0904524B7DCE9009D291E /* Assets.xcassets in Resources */,
 				43C0904324B7DCE8009D291E /* Main.storyboard in Resources */,
 			);
@@ -365,7 +383,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = QLTJ282H2W;
+				DEVELOPMENT_TEAM = 72TBPLDUQ4;
 				INFOPLIST_FILE = HelloCocoaPods/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -384,7 +402,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = QLTJ282H2W;
+				DEVELOPMENT_TEAM = 72TBPLDUQ4;
 				INFOPLIST_FILE = HelloCocoaPods/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = (

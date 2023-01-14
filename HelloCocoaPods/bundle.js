@@ -393,6 +393,75 @@ class BoundBox2D extends Component {
 //     }
 // }
 
+class TextSimple extends Component {
+    vb = null
+    native = null
+    isMask = false
+
+    constructor(node, font, width, height) {
+        super(node)
+
+        let bound = node.getComponent(BoundBox2D)
+        if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
+        else bound.setSize(width, height)
+
+        bound.onBoundChanged = this.onBoundUpdated.bind(this)
+
+        this.vb = this.createData(null)
+        this.native = globalThis.addText(node.id(), this.fillBuffer(bound), font.texture)
+    }
+
+    onBoundUpdated(bound) {
+        let buffer = this.fillBuffer(bound)
+        buffer && globalThis.updateRenderer(this.native, buffer)
+    }
+
+    setMask(enabled) {
+        if (this.isMask == enabled) return
+
+        this.isMask = enabled
+        this.enabled && globalThis.updateMaterial(this.node.id(), enabled, true)
+    }
+
+    onEnableChanged(enabled) {
+        globalThis.updateMaterial(this.node.id(), this.isMask, enabled)
+    }
+
+    createData(image) {
+        let left = 0
+        let right = 1
+        let top = 1
+        let bottom = 0
+
+        let array = [
+            0, 0, left, bottom,     //0
+            0, 0, right, bottom,    //1
+            0, 0, left, top,        //2
+            0, 0, right, top,       //3
+        ]
+        return new Float32Array(array)
+    }
+
+    fillBuffer(bound) {
+        let top = bound.top
+        let bottom = bound.bottom
+        let left = bound.left
+        let right = bound.right
+
+        let vb = this.vb
+        vb[0] = left, vb[1] = bottom
+        vb[4] = right, vb[5] = bottom
+        vb[8] = left, vb[9] = top
+        vb[12] = right, vb[13] = top
+
+        return vb
+    }
+
+    // setSprite(image, width, height) {
+    //     globalThis.updateRenderer(this.native, this.fillBuffer(width, height))
+    // }
+}
+
 class SpriteSimple extends Component {
     vb = null
     native = null
@@ -931,12 +1000,18 @@ let textures = {
     }
 }
 
+let font = {
+    texture: null
+}
+
 var init = function () {
     beginScene()
 
     for (let i in textures) {
         textures[i].native = globalThis.loadImage(i + '.ktx2')
     }
+
+    font.texture = globalThis.renderText()
 
     new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
@@ -992,6 +1067,10 @@ var init = function () {
     node = root.addChild()
     node.position.set(0, 250, 0)
     new SpriteRadial(node, textures.red, 50, 50)
+
+    node = root.addChild()
+    node.position.set(0, -300, 0)
+    new TextSimple(node, 200, 200)
 }
 
 var input = {
