@@ -1,9 +1,13 @@
 material {
-    name : bakedColor,
+    name : bakedText,
     parameters : [
         {
             type : sampler2d,
             name : texture
+        },
+        {
+            type: float4,
+            name: baseColor
         }
     ],
     requires : [
@@ -17,8 +21,8 @@ material {
 fragment {
     void material(inout MaterialInputs material) {
         prepareMaterial(material);
-        vec4 color = texture(materialParams_texture, getUV0());
+        float4 color = texture(materialParams_texture, getUV0());
 
-        material.baseColor = color;
+        material.baseColor = materialParams.baseColor * color.r;
     }
 }

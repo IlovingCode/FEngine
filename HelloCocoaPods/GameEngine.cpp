@@ -217,6 +217,31 @@ JSCALLBACK(updateRenderer) {
     return arguments[0];
 }
 
+JSCALLBACK(updateParameter) {
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    
+    auto& rm = engine->getRenderableManager();
+    auto instance = rm.getInstance(Entity::import(id));
+    MaterialInstance* material = rm.getMaterialInstanceAt(instance, 0);
+
+    
+    if(argumentCount > 2) {
+        double red = JSValueToNumber(ctx, arguments[1], nullptr);
+        double green = JSValueToNumber(ctx, arguments[2], nullptr);
+        double blue = JSValueToNumber(ctx, arguments[3], nullptr);
+        double alpha = JSValueToNumber(ctx, arguments[4], nullptr);
+        
+        material->setParameter("baseColor", RgbaType::LINEAR, math::float4{red, green, blue, alpha});
+    } else {
+        JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+        Texture* texture = static_cast<Texture*>(data);
+        material->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+    }
+    
+    return arguments[0];
+}
+
 JSCALLBACK(updateMaterial) {
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     bool isMask = JSValueToBoolean(ctx, arguments[1]);
@@ -263,15 +288,16 @@ JSCALLBACK(updateMaterial) {
 //}
 
 JSCALLBACK(renderText) {
-    string filename = "cmunrm.ttf";
+    string filename = JSValueToStdString(ctx, arguments[0]);
     const Path parent = Path::getCurrentExecutable().getParent();
     
-    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    string word = JSValueToStdString(ctx, arguments[1]);
+    
+    JSObjectRef array = JSValueToObject(ctx, arguments[2], nullptr);
 //    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-    float* d = static_cast<float*>(buffer);
+    short* d = static_cast<short*>(buffer);
     
-
     ifstream file(parent + filename, ios::binary);
     const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
     
@@ -279,17 +305,15 @@ JSCALLBACK(renderText) {
     stbtt_fontinfo info;
     if (!stbtt_InitFont(&info, contents.data(), 0)) return nullptr;
     
-    int b_w = 512; /* bitmap width */
-    int b_h = 512; /* bitmap height */
-    int l_h = 64; /* line height */
+    int b_w = JSValueToNumber(ctx, arguments[3], nullptr); /* bitmap width */
+    int b_h = JSValueToNumber(ctx, arguments[4], nullptr); /* bitmap height */
+    int l_h = JSValueToNumber(ctx, arguments[5], nullptr); /* line height */
 
     /* create a bitmap for the phrase */
     unsigned char* bitmap = (unsigned char*)calloc(b_w * b_h, sizeof(unsigned char));
     
     /* calculate font scaling */
     float scale = stbtt_ScaleForPixelHeight(&info, l_h);
-
-    const char* word = "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890!@#$%^&*()-=[];',./_+{}:\"<>?\\|`~";
     
     int x = 0;
     int y = 0;
@@ -299,17 +323,20 @@ JSCALLBACK(renderText) {
     
     ascent = roundf(ascent * scale);
     descent = roundf(descent * scale);
+    lineGap = roundf(lineGap * scale);
     
     d[0] = ascent;
     d[1] = descent;
-    d[2] = scale;
+    d[2] = lineGap;
     
-    for (int i = 0; i < strlen(word); ++i)
+    for (int i = 0; i < word.length(); ++i)
     {
         /* how wide is this character */
         int ax;
         int lsb;
         stbtt_GetCodepointHMetrics(&info, word[i], &ax, &lsb);
+        ax = roundf(ax * scale);
+        lsb = roundf(lsb * scale);
         /* (Note that each Codepoint call has an alternative Glyph version which caches the work required to lookup the character word[i].) */
 
         /* get bounding box for character (may be offset to account for chars that dip above or below the line) */
@@ -317,25 +344,27 @@ JSCALLBACK(renderText) {
         stbtt_GetCodepointBitmapBox(&info, word[i], scale, scale, &c_x1, &c_y1, &c_x2, &c_y2);
         
         /* compute y (different characters have different heights) */
-//        int y = ascent + c_y1;
-        if(x + roundf(ax * scale) > b_w) {
+        // int y = ascent + c_y1;
+        if(x + ax > b_w) {
             x = 0;
-            y += ascent - descent + lineGap * scale;
+            y += ascent - descent + lineGap;
         }
         
         /* render character (stride and offset is important here) */
-        int byteOffset = x + roundf(lsb * scale) + (y + ascent + c_y1) * b_w;
+        int byteOffset = x + lsb + (y + ascent + c_y1) * b_w;
         stbtt_MakeCodepointBitmap(&info, bitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, b_w, scale, scale, word[i]);
 
-        d[i * 6 + 3] = ax;
-        d[i * 6 + 4] = lsb;
-        d[i * 6 + 5] = (x + roundf(lsb * scale)) / b_w;
-        d[i * 6 + 6] = (x + roundf(ax * scale)) / b_w;
-        d[i * 6 + 7] = y + ascent + c_y1;
-        d[i * 6 + 8] = y + ascent + c_y2;
+        byteOffset = i * 7 + 3;
+        d[byteOffset + 0] = ax;
+        d[byteOffset + 1] = lsb;
+        d[byteOffset + 2] = c_y1;
+        d[byteOffset + 3] = c_x2 - c_x1;
+        d[byteOffset + 4] = c_y2 - c_y1;
+        d[byteOffset + 5] = x + lsb;
+        d[byteOffset + 6] = y + ascent + c_y1;
         
         /* advance x */
-        x += roundf(ax * scale);
+        x += ax;
         
         /* add kerning */
 //        int kern;
@@ -382,17 +411,14 @@ JSCALLBACK(addText) {
     if(mat == nullptr) {
         // This file is compiled via the matc tool. See the "Run Script" build phase.
         constexpr uint8_t BAKED_COLOR_PACKAGE[] = {
-            #include "bakedColor.inc"
+            #include "bakedText.inc"
         };
         
         mat = Material::Builder()
             .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
             .build(*engine);
         
-        array = JSValueToObject(ctx, arguments[3], nullptr);
-        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-        Texture* texture = static_cast<Texture*>(data);
-        mat->setDefaultParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+        mat->setDefaultParameter("baseColor", RgbaType::LINEAR, math::float4{1, 1, 1, 1});
     }
     
     IndexBuffer* ib = IndexBuffer::Builder()
@@ -413,6 +439,13 @@ JSCALLBACK(addText) {
     matInstance->setDepthCulling(true);
     matInstance->setColorWrite(true);
     matInstance->setDepthWrite(false);
+    
+    if(argumentCount > 3) {
+        array = JSValueToObject(ctx, arguments[3], nullptr);
+        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+        Texture* texture = static_cast<Texture*>(data);
+        matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+    }
 
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
@@ -647,6 +680,7 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("loadImage", loadImage, globalObject);
     registerNativeFunction("addText", addText, globalObject);
     registerNativeFunction("renderText", renderText, globalObject);
+    registerNativeFunction("updateParameter", updateParameter, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + filename) << endl;
