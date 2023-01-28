@@ -214,6 +214,18 @@ JSCALLBACK(updateRenderer) {
     
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, count * 4, nullptr));
     
+    if(argumentCount > 2) {
+        array = JSValueToObject(ctx, arguments[2], nullptr);
+        data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+        IndexBuffer* ib = static_cast<IndexBuffer*>(data);
+        
+        array = JSValueToObject(ctx, arguments[3], nullptr);
+        count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+        data = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+        
+        ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(data, count * 2, nullptr));
+    }
+    
     return arguments[0];
 }
 
@@ -286,6 +298,20 @@ JSCALLBACK(updateMaterial) {
 //
 //    return arguments[0];
 //}
+
+JSCALLBACK(createIndexBuffer) {
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    size_t ic = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* INDICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    
+    IndexBuffer* ib = IndexBuffer::Builder()
+        .indexCount((uint32_t)ic)
+        .bufferType(IndexBuffer::IndexType::USHORT)
+        .build(*engine);
+    ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, ic * 2, nullptr));
+    
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, ib, sizeof(ib), nullptr, nullptr, nullptr);
+}
 
 JSCALLBACK(renderText) {
     string filename = JSValueToStdString(ctx, arguments[0]);
@@ -681,6 +707,7 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("addText", addText, globalObject);
     registerNativeFunction("renderText", renderText, globalObject);
     registerNativeFunction("updateParameter", updateParameter, globalObject);
+    registerNativeFunction("createIndexBuffer", createIndexBuffer, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + filename) << endl;
@@ -688,6 +715,17 @@ GameEngine::GameEngine(void* nativeWindow){
     ostringstream buffer;
     buffer << file.rdbuf();
     file.close();
+    
+//    JSStringRef script = JSStringCreateWithUTF8CString(buffer.str().c_str());
+//    JSValueRef exception = nullptr;
+//    JSEvaluateScript(globalContext, script, nullptr, nullptr, 0, &exception);
+//    if(exception) cout << JSValueToStdString(globalContext, exception);
+
+//    JSStringRelease(script);
+    
+    ifstream file_game(parent + "bundle_game.js");
+    buffer << file_game.rdbuf();
+    file_game.close();
     
     JSStringRef script = JSStringCreateWithUTF8CString(buffer.str().c_str());
     JSValueRef exception = nullptr;
