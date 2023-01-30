@@ -420,7 +420,7 @@ class TextSimple extends Component {
     // size = 20
     string = null
 
-    constructor(node, font, size, align = 0) {
+    constructor(node, font, size, align = 0, max = 10) {
         super(node)
 
         let bound = node.getComponent(BoundBox2D)
@@ -435,9 +435,9 @@ class TextSimple extends Component {
         this.size = size
         this.textAlign = align
 
-        // this.native_i = globalThis.createIndexBuffer(new Uint16Array(0))
+        // this.native_i = globalThis.createIndexBuffer(new Uint16Array(max * 6))
         // this.native = globalThis.addText(this.node.id(),
-        //     new Float32Array(vb), new Uint16Array(ib), this.font.native)
+        //     new Float32Array(vb), this.native_i, this.font.native)
     }
 
     setColor(r, g, b, a) {
