@@ -80,7 +80,7 @@ var init = function () {
     new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
     let node = root.addChild()
-    new SpriteSimple(node, textures.tiny).setMask(true)
+    new SpriteSimple(node, textures.tiny, true)
     node.getComponent(BoundBox2D).setSize(2000, 2000)
     new Game(node)
 
@@ -115,13 +115,13 @@ var init = function () {
     new Toggle(node)
 
     node = root.addChild()
-    new SpriteSimple(node, textures.tiny)
+    new SpriteSimple(node, textures.tiny).setEnable(false)
     node.getComponent(BoundBox2D).setSize(300, 300)
     node.getComponent(BoundBox2D).setAlignment(0, -1, 0, 0, 10, 0)
 
     node = node.addChild()
-    node.position.z = -.1
-    new SpriteSimple(node, textures.tiny).setMask(true)
+    node.position.z = -.2
+    new SpriteSimple(node, textures.tiny, true)
     node.getComponent(BoundBox2D).setSize(250, 250)
     let scrollView = new ScrollView(node)
 
@@ -134,20 +134,20 @@ var init = function () {
     let content = 'QqWwEeRrTtYyUuIiOoPpAaSsDdFfGgHhJjKkLlZzXxCcVvBbNnMm'
 
     for (let i = 0; i < 200; i++) {
-        let child = node.addChild()
+        child = node.addChild()
 
         new SpriteSimple(child, textures.red)
         child.getComponent(BoundBox2D).setSize(50, 50)
         new Button(child)
 
         let child1 = child.addChild()
-        child1.position.set(0, 10, 0)
-        new TextSimple(child1, font, 20, .5).setText(i.toString())
+        child1.position.set(0, 10, .1)
+        new TextSimple(child1, font, 20, .5, 3).setText(i.toString())
 
         child1 = child.addChild()
-        child1.position.set(0, -10, 0)
+        child1.position.set(0, -10, .1)
         let id = i % (content.length - 3)
-        new TextSimple(child1, font, 25, 0).setText(content.substring(id, id + 3))
+        new TextSimple(child1, font, 25, 0.5, 3).setText(content.substring(id, id + 3))
     }
 
     node = root.addChild()
@@ -157,16 +157,17 @@ var init = function () {
 
     node = root.addChild()
     node.position.set(0, -300, 0)
-    let text = new TextSimple(node, font, 40)
+    let text = new TextSimple(node, font, 30, 0, 60)
     text.setText(
         `This is simple text.
         Merry Christmas!! Happy New Year!!`)
-    text.setColor(.9, .3, .7, 1)
+    text.setColor(1, 0, 0, 1)
 
     new Button(node)
 
     node = root.addChild()
     new SpriteSimple(node, font)
+    node.getComponent(BoundBox2D).setSize(300, 300)
     node.getComponent(BoundBox2D).setAlignment(0, 1, 0, 0, 0, 10)
 }
 

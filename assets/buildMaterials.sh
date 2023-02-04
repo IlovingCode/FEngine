@@ -1,6 +1,7 @@
 # ./matc -p mobile -a opengl -f header -o "./bakedColor.inc" "./bakedColor.mat"
-# ./matc -p mobile -a metal -f header -o "../HelloCocoaPods/bakedColor.inc" "./bakedColor.mat"
+./matc -p mobile -a metal -f header -o "../HelloCocoaPods/bakedColor.inc" "./bakedColor.mat"
 ./matc -p mobile -a metal -f header -o "../HelloCocoaPods/bakedText.inc" "./bakedText.mat"
+./matc -p mobile -a metal -f header -o "../HelloCocoaPods/bakedMask.inc" "./bakedMask.mat"
 
 # ./mipgen -f ktx2 --compression=uastc -m 1 spr_BottleCap_strip2.png spr_BottleCap_strip2.ktx2
 

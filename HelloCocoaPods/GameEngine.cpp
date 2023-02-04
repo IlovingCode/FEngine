@@ -219,36 +219,11 @@ JSCALLBACK(updateRenderer) {
         data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
         IndexBuffer* ib = static_cast<IndexBuffer*>(data);
         
-        array = JSValueToObject(ctx, arguments[3], nullptr);
-        count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
-        data = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+        uint32_t id = JSValueToNumber(ctx, arguments[3], nullptr);
+        auto& rm = engine->getRenderableManager();
+        auto instance = rm.getInstance(Entity::import(id));
         
-        ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(data, count * 2, nullptr));
-    }
-    
-    return arguments[0];
-}
-
-JSCALLBACK(updateParameter) {
-    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
-    
-    auto& rm = engine->getRenderableManager();
-    auto instance = rm.getInstance(Entity::import(id));
-    MaterialInstance* material = rm.getMaterialInstanceAt(instance, 0);
-
-    
-    if(argumentCount > 2) {
-        double red = JSValueToNumber(ctx, arguments[1], nullptr);
-        double green = JSValueToNumber(ctx, arguments[2], nullptr);
-        double blue = JSValueToNumber(ctx, arguments[3], nullptr);
-        double alpha = JSValueToNumber(ctx, arguments[4], nullptr);
-        
-        material->setParameter("baseColor", RgbaType::LINEAR, math::float4{red, green, blue, alpha});
-    } else {
-        JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
-        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-        Texture* texture = static_cast<Texture*>(data);
-        material->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+        rm.setGeometryAt(instance, 0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, count / 16 * 6);
     }
     
     return arguments[0];
@@ -256,21 +231,32 @@ JSCALLBACK(updateParameter) {
 
 JSCALLBACK(updateMaterial) {
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
-    bool isMask = JSValueToBoolean(ctx, arguments[1]);
-    bool isVisible = JSValueToBoolean(ctx, arguments[2]);
     
     auto& rm = engine->getRenderableManager();
     auto instance = rm.getInstance(Entity::import(id));
     MaterialInstance* material = rm.getMaterialInstanceAt(instance, 0);
-
-    if(isVisible) {
-        material->setDepthWrite(isMask);
-        material->setDepthCulling(!isMask);
-        material->setColorWrite(!isMask);
+    
+    if(argumentCount > 3) {
+        double red = JSValueToNumber(ctx, arguments[1], nullptr);
+        double green = JSValueToNumber(ctx, arguments[2], nullptr);
+        double blue = JSValueToNumber(ctx, arguments[3], nullptr);
+        double alpha = JSValueToNumber(ctx, arguments[4], nullptr);
+        
+        material->setParameter("baseColor", RgbaType::LINEAR, math::float4{red, green, blue, alpha});
+    } else if (argumentCount > 2) {
+        bool isVisible = JSValueToBoolean(ctx, arguments[1]);
+//        uint8_t priority = JSValueToNumber(ctx, arguments[2], nullptr);
+        
+        rm.setLayerMask(instance, 0xff, isVisible ? 0xff : 0x00);
+//        rm.setPriority(instance, priority);
+    } else {
+        JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+        Texture* texture = static_cast<Texture*>(data);
+        
+        material->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
     }
     
-    rm.setLayerMask(instance, 0xff, isVisible ? 0xff : 0x00);
-
     return arguments[0];
 }
 
@@ -428,30 +414,30 @@ JSCALLBACK(addText) {
     size_t vc = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
     
-    array = JSValueToObject(ctx, arguments[2], nullptr);
-    size_t ic = JSObjectGetTypedArrayLength(ctx, array, nullptr);
-    void* INDICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+//    array = JSValueToObject(ctx, arguments[2], nullptr);
+//    size_t ic = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+//    void* INDICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
 
     static Material *mat;
     
     if(mat == nullptr) {
         // This file is compiled via the matc tool. See the "Run Script" build phase.
-        constexpr uint8_t BAKED_COLOR_PACKAGE[] = {
+        constexpr uint8_t BAKED_TEXT_PACKAGE[] = {
             #include "bakedText.inc"
         };
         
         mat = Material::Builder()
-            .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
+            .package((void*) BAKED_TEXT_PACKAGE, sizeof(BAKED_TEXT_PACKAGE))
             .build(*engine);
         
         mat->setDefaultParameter("baseColor", RgbaType::LINEAR, math::float4{1, 1, 1, 1});
     }
     
-    IndexBuffer* ib = IndexBuffer::Builder()
-        .indexCount((uint32_t)ic)
-        .bufferType(IndexBuffer::IndexType::USHORT)
-        .build(*engine);
-    ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, ic * 2, nullptr));
+//    IndexBuffer* ib = IndexBuffer::Builder()
+//        .indexCount((uint32_t)ic)
+//        .bufferType(IndexBuffer::IndexType::USHORT)
+//        .build(*engine);
+//    ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, ic * 2, nullptr));
     
     VertexBuffer* vb = VertexBuffer::Builder()
         .vertexCount((uint32_t)vc / 4)
@@ -462,21 +448,16 @@ JSCALLBACK(addText) {
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, vc * 4, nullptr));
 
     auto matInstance = mat->createInstance();
-    matInstance->setDepthCulling(true);
-    matInstance->setColorWrite(true);
-    matInstance->setDepthWrite(false);
     
-    if(argumentCount > 3) {
-        array = JSValueToObject(ctx, arguments[3], nullptr);
-        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-        Texture* texture = static_cast<Texture*>(data);
-        matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
-    }
+    array = JSValueToObject(ctx, arguments[2], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Texture* texture = static_cast<Texture*>(data);
+    matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
 
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
         .material(0, matInstance)
-        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
+//        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
         .culling(true)
         .receiveShadows(false)
         .castShadows(false)
@@ -494,7 +475,7 @@ JSCALLBACK(addRenderer){
     void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
 
     static IndexBuffer *ib_4, *ib_16, *ib_17;
-    static Material *mat;
+    static Material *mat, *mask;
     
     if(mat == nullptr) {
         static constexpr uint16_t INDICES_4[6] = { 0, 1, 2, 3, 2, 1 };
@@ -520,9 +501,16 @@ JSCALLBACK(addRenderer){
         constexpr uint8_t BAKED_COLOR_PACKAGE[] = {
             #include "bakedColor.inc"
         };
+        constexpr uint8_t BAKED_MASK_PACKAGE[] = {
+            #include "bakedMask.inc"
+        };
         
         mat = Material::Builder()
             .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
+            .build(*engine);
+        
+        mask = Material::Builder()
+            .package((void*) BAKED_MASK_PACKAGE, sizeof(BAKED_MASK_PACKAGE))
             .build(*engine);
         
         ib_4 = IndexBuffer::Builder()
@@ -552,17 +540,13 @@ JSCALLBACK(addRenderer){
         .build(*engine);
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, count * 4, nullptr));
 
-    auto matInstance = mat->createInstance();
-    matInstance->setDepthCulling(true);
-    matInstance->setColorWrite(true);
-    matInstance->setDepthWrite(false);
-    
-    if(argumentCount > 2) {
-        array = JSValueToObject(ctx, arguments[2], nullptr);
-        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-        Texture* texture = static_cast<Texture*>(data);
-        matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
-    }
+    bool isMask = JSValueToBoolean(ctx, arguments[3]);
+    auto matInstance = (isMask ? mask : mat)->createInstance();
+
+    array = JSValueToObject(ctx, arguments[2], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Texture* texture = static_cast<Texture*>(data);
+    matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
 
     auto ib_t = count > 64 ? ib_17 : (count > 16 ? ib_16 : ib_4);
     RenderableManager::Builder(1)
@@ -706,7 +690,6 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("loadImage", loadImage, globalObject);
     registerNativeFunction("addText", addText, globalObject);
     registerNativeFunction("renderText", renderText, globalObject);
-    registerNativeFunction("updateParameter", updateParameter, globalObject);
     registerNativeFunction("createIndexBuffer", createIndexBuffer, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();

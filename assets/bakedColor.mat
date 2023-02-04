@@ -10,7 +10,10 @@ material {
         uv0
     ],
     shadingModel : unlit,
-    blending : masked,
+    blending : transparent,
+    colorWrite : true,
+    depthWrite : false,
+    depthCulling : true,
     culling : none
 }
 
@@ -19,6 +22,6 @@ fragment {
         prepareMaterial(material);
         vec4 color = texture(materialParams_texture, getUV0());
 
-        material.baseColor = color;
+        material.baseColor = color * color.a;
     }
 }

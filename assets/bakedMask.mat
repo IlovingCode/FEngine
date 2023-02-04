@@ -1,23 +1,19 @@
 material {
-    name : bakedText,
+    name : bakedColor,
     parameters : [
         {
             type : sampler2d,
             name : texture
-        },
-        {
-            type: float4,
-            name: baseColor
         }
     ],
     requires : [
         uv0
     ],
     shadingModel : unlit,
-    blending : transparent,
-    colorWrite : true,
-    depthWrite : false,
-    depthCulling : true,
+    blending : masked,
+    colorWrite : false,
+    depthWrite : true,
+    depthCulling : false,
     culling : none
 }
 
@@ -26,6 +22,6 @@ fragment {
         prepareMaterial(material);
         vec4 color = texture(materialParams_texture, getUV0());
 
-        material.baseColor = materialParams.baseColor * color.r;
+        material.baseColor = color;
     }
 }

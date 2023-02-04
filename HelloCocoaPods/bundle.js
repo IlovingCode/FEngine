@@ -374,47 +374,11 @@ class BoundBox2D extends Component {
     }
 }
 
-// class FastMask extends Component {
-//     bound = null
-
-//     constructor(node, width, height) {
-//         super(node)
-
-//         let bound = node.getComponent(BoundBox2D)
-//         if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
-//         else bound.set(width, height)
-
-//         this.bound = bound
-
-//         this.set(bound)
-//     }
-
-//     set(bound) {
-//         let left = bound.left
-//         let bottom = bound.bottom
-//         let width = bound.right - left
-//         let height = bound.top - bottom
-
-//         let array = []
-//         let nodes = [this.node]
-//         while (nodes.length > 0) {
-//             let p = nodes.shift()
-//             if (p.getComponent(SpriteSimple) || p.getComponent(SpriteSliced))
-//                 array.push(p.id())
-
-//             for (let i of p.children) nodes.push(i)
-//         }
-
-//         globalThis.updateScissor(new Uint32Array(array), left, bottom, width, height)
-//     }
-// }
-
 class TextSimple extends Component {
-    vb = null
-    ib = null
-    native = null
-    native_i = null
-    isMask = false
+    // vb = null
+    // ib = null
+    // native = null
+    // native_i = null
     // textAlign = 0
     // font = null
     // size = 20
@@ -435,17 +399,34 @@ class TextSimple extends Component {
         this.size = size
         this.textAlign = align
 
-        // this.native_i = globalThis.createIndexBuffer(new Uint16Array(max * 6))
-        // this.native = globalThis.addText(this.node.id(),
-        //     new Float32Array(vb), this.native_i, this.font.native)
+        let ib = new Uint16Array(max * 6)
+        let count = 0
+        let id = 0
+        for (let i = 0; i < max; i++) {
+            ib[id + 0] = count + 0
+            ib[id + 1] = count + 1
+            ib[id + 2] = count + 2
+            ib[id + 3] = count + 3
+            ib[id + 4] = count + 2
+            ib[id + 5] = count + 1
+
+            id += 6
+            count += 4
+        }
+
+        this.vb = new Float32Array(max * 16)
+
+        this.native_i = globalThis.createIndexBuffer(ib)
+        this.native = globalThis.addText(this.node.id(), this.vb, this.font.native)
     }
 
     setColor(r, g, b, a) {
-        globalThis.updateParameter(this.node.id(), r, g, b, a)
+        globalThis.updateMaterial(this.node.id(), r, g, b, a)
     }
 
     setText(text) {
         if (this.string == text) return
+
         let bound = this.node.getComponent(BoundBox2D)
 
         this.string = text
@@ -478,8 +459,7 @@ class TextSimple extends Component {
         max *= scale
         bound.setSize(max, y - lineGap)
 
-        let vb = []
-        let ib = []
+        let vb = this.vb
         let count = 0
         let space = data[' '].ax * scale
         y = -bound.top
@@ -506,30 +486,22 @@ class TextSimple extends Component {
 
                 x += glyph.ax * scale
 
-                vb.push(
+                let buffer = [
                     left, bottom, u0, v1,   //0
                     right, bottom, u1, v1,  //1
                     left, top, u0, v0,      //2
                     right, top, u1, v0      //3
-                )
+                ]
 
-                ib.push(
-                    count + 0,
-                    count + 1,
-                    count + 2,
-                    count + 3,
-                    count + 2,
-                    count + 1
-                )
-
-                count += 4
+                vb.set(buffer, count)
+                count += 16
             }
 
             y += ascent - descent + lineGap
         }
 
-        this.native = globalThis.addText(this.node.id(),
-            new Float32Array(vb), new Uint16Array(ib), this.font.native)
+        this.native = globalThis.updateRenderer(this.native, vb,
+            this.native_i, this.node.id())
     }
 
     onBoundUpdated(bound) {
@@ -537,58 +509,16 @@ class TextSimple extends Component {
         // buffer && globalThis.updateRenderer(this.native, buffer)
     }
 
-    setMask(enabled) {
-        if (this.isMask == enabled) return
-
-        this.isMask = enabled
-        this.enabled && globalThis.updateMaterial(this.node.id(), enabled, true)
-    }
-
     onEnableChanged(enabled) {
-        globalThis.updateMaterial(this.node.id(), this.isMask, enabled)
+        globalThis.updateMaterial(this.node.id(), enabled, 0)
     }
-
-    // createData(image) {
-    //     let left = 0
-    //     let right = 1
-    //     let top = 1
-    //     let bottom = 0
-
-    //     let array = [
-    //         0, 0, left, bottom,     //0
-    //         0, 0, right, bottom,    //1
-    //         0, 0, left, top,        //2
-    //         0, 0, right, top,       //3
-    //     ]
-    //     return new Float32Array(array)
-    // }
-
-    // fillBuffer(bound) {
-    //     let top = bound.top
-    //     let bottom = bound.bottom
-    //     let left = bound.left
-    //     let right = bound.right
-
-    //     let vb = this.vb
-    //     vb[0] = left, vb[1] = bottom
-    //     vb[4] = right, vb[5] = bottom
-    //     vb[8] = left, vb[9] = top
-    //     vb[12] = right, vb[13] = top
-
-    //     return vb
-    // }
-
-    // setSprite(image, width, height) {
-    //     globalThis.updateRenderer(this.native, this.fillBuffer(width, height))
-    // }
 }
 
 class SpriteSimple extends Component {
     vb = null
     native = null
-    isMask = false
 
-    constructor(node, image) {
+    constructor(node, image, isMask = false) {
         super(node)
 
         let bound = node.getComponent(BoundBox2D)
@@ -600,7 +530,7 @@ class SpriteSimple extends Component {
         bound.onBoundChanged = this.onBoundUpdated.bind(this)
 
         this.vb = this.createData(image)
-        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
+        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native, isMask)
     }
 
     onBoundUpdated(bound) {
@@ -608,15 +538,8 @@ class SpriteSimple extends Component {
         buffer && globalThis.updateRenderer(this.native, buffer)
     }
 
-    setMask(enabled) {
-        if (this.isMask == enabled) return
-
-        this.isMask = enabled
-        this.enabled && globalThis.updateMaterial(this.node.id(), enabled, true)
-    }
-
     onEnableChanged(enabled) {
-        globalThis.updateMaterial(this.node.id(), this.isMask, enabled)
+        globalThis.updateMaterial(this.node.id(), enabled, 0)
     }
 
     createData(image) {
@@ -651,7 +574,7 @@ class SpriteSimple extends Component {
 
     setSprite(image) {
         this.node.getComponent(BoundBox2D).setSize(image.width, image.height)
-        globalThis.updateParameter(this.node.id(), image.native)
+        globalThis.updateMaterial(this.node.id(), image.native)
     }
 }
 
