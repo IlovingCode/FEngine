@@ -77,7 +77,8 @@
 
 - (void)sendInput:(UITouch*)touch {
     CGPoint location = [touch locationInView:self.view];
-    _gameEngine->input(location.x, location.y, (uint8_t)touch.phase);
+    float scale = self.view.contentScaleFactor;
+    _gameEngine->input(location.x * scale, location.y * scale, (uint8_t)touch.phase);
 }
 
 @end

@@ -37,7 +37,7 @@ const font = {
     name: 'cmunrm.ttf',
     width: 256,
     height: 256,
-    scale: 38,
+    scale: 43,
     native: null,
     ascent: 0,
     descent: 0,
@@ -77,9 +77,11 @@ var init = function () {
 
     buildFont(font)
 
+    root.position.z = 0
     new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
     let node = root.addChild()
+    node.position.z = 0
     new SpriteSimple(node, textures.tiny, true)
     node.getComponent(BoundBox2D).setSize(2000, 2000)
     new Game(node)
@@ -120,7 +122,7 @@ var init = function () {
     node.getComponent(BoundBox2D).setAlignment(0, -1, 0, 0, 10, 0)
 
     node = node.addChild()
-    node.position.z = -.2
+    node.position.z = -.5
     new SpriteSimple(node, textures.tiny, true)
     node.getComponent(BoundBox2D).setSize(250, 250)
     let scrollView = new ScrollView(node)
@@ -142,25 +144,24 @@ var init = function () {
 
         let child1 = child.addChild()
         child1.position.set(0, 10, .1)
-        new TextSimple(child1, font, 20, .5, 3).setText(i.toString())
+        new TextSimple(child1, font, 20, .5, 3).setText((i + 1).toString())
 
         child1 = child.addChild()
         child1.position.set(0, -10, .1)
         let id = i % (content.length - 3)
-        new TextSimple(child1, font, 25, 0.5, 3).setText(content.substring(id, id + 3))
+        new TextSimple(child1, font, 25, .5, 3).setText(content.substring(id, id + 3))
     }
 
     node = root.addChild()
-    node.position.set(0, 250, 0)
+    node.position.set(0, 250, .1)
     new SpriteRadial(node, textures.red)
     node.getComponent(BoundBox2D).setSize(50, 50)
 
     node = root.addChild()
-    node.position.set(0, -300, 0)
-    let text = new TextSimple(node, font, 30, 0, 60)
-    text.setText(
-        `This is simple text.
-        Merry Christmas!! Happy New Year!!`)
+    node.position.set(0, -300, .1)
+    let str = `This is simple text.\n Merry Christmas!! Happy New Year!!`
+    let text = new TextSimple(node, font, 40, 0, str.length)
+    text.setText(str)
     text.setColor(1, 0, 0, 1)
 
     new Button(node)

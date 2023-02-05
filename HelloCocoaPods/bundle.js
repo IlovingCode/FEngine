@@ -60,7 +60,7 @@ class Vec2 {
 class Node {
     worldPosition = new Vec3(0, 0, 0)
 
-    position = new Vec3(0, 0, 0)
+    position = new Vec3(0, 0, .1)
     rotation = new Vec3(0, 0, 0)
     scale = new Vec3(1, 1, 1)
     parent = null
@@ -87,15 +87,9 @@ class Node {
         if (this.globalActive == enabled) return
         this.globalActive = enabled
 
-        for (let i of this.components) {
-            if (i.enabled) {
-                i.onEnableChanged && i.onEnableChanged(enabled)
-            }
-        }
+        for (let i of this.components) i.enabled && i.onEnableChanged && i.onEnableChanged(enabled)
 
-        for (let i of this.children) {
-            i.active && i.onActive(enabled)
-        }
+        for (let i of this.children) i.active && i.onActive(enabled)
     }
 
     addChild(node) {
@@ -378,7 +372,6 @@ class TextSimple extends Component {
     // vb = null
     // ib = null
     // native = null
-    // native_i = null
     // textAlign = 0
     // font = null
     // size = 20
@@ -399,24 +392,8 @@ class TextSimple extends Component {
         this.size = size
         this.textAlign = align
 
-        let ib = new Uint16Array(max * 6)
-        let count = 0
-        let id = 0
-        for (let i = 0; i < max; i++) {
-            ib[id + 0] = count + 0
-            ib[id + 1] = count + 1
-            ib[id + 2] = count + 2
-            ib[id + 3] = count + 3
-            ib[id + 4] = count + 2
-            ib[id + 5] = count + 1
-
-            id += 6
-            count += 4
-        }
-
         this.vb = new Float32Array(max * 16)
 
-        this.native_i = globalThis.createIndexBuffer(ib)
         this.native = globalThis.addText(this.node.id(), this.vb, this.font.native)
     }
 
@@ -500,8 +477,7 @@ class TextSimple extends Component {
             y += ascent - descent + lineGap
         }
 
-        this.native = globalThis.updateRenderer(this.native, vb,
-            this.native_i, this.node.id())
+        this.native = globalThis.updateRenderer(this.native, vb, count, this.node.id())
     }
 
     onBoundUpdated(bound) {
@@ -1011,7 +987,7 @@ let root = new Node
 let camera = null
 
 var buildFont = function (font) {
-    let text = "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890!@#$%^&*()-=[];',./_+{}:\"<>?\\|`~ "
+    let text = "QWERTYUIOPASDFGHJKLZXCVBNM1234567890qwertyuiopasdfghjklzxcvbnm!@#$%^&*()-=[];',./_+{}:\"<>?\\|`~ "
     let buffer = new Int16Array(text.length * 7 + 4)
 
     font.native = globalThis.renderText(font.name, text, buffer, font.width, font.height, font.scale)

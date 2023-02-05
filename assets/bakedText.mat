@@ -27,5 +27,6 @@ fragment {
         vec4 color = texture(materialParams_texture, getUV0());
 
         material.baseColor = materialParams.baseColor * color.r;
+        //material.baseColor = color;
     }
 }

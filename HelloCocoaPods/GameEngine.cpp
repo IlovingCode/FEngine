@@ -170,7 +170,7 @@ JSCALLBACK(getWorldTransform){
 JSCALLBACK(loadImage) {
     string filename = JSValueToStdString(ctx, arguments[0]);
     const Path parent = Path::getCurrentExecutable().getParent();
-//    cout << (parent + (filename + ".ktx2")) << endl;
+//    cout << (parent + filename) << endl;
 
     ifstream file(parent + filename, ios::binary);
     const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
@@ -187,21 +187,55 @@ JSCALLBACK(loadImage) {
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, texture, sizeof(texture), nullptr, nullptr, nullptr);
 }
 
-//Texture* loadImage(string filename) {
-//    const Path parent = Path::getCurrentExecutable().getParent();
-////    cout << (parent + filename) << endl;
-//    ifstream file(parent + filename, ios::binary);
-//    const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
-//
-//    ktxreader::Ktx2Reader reader(*engine);
-//
-//    // Uncompressed formats are lower priority, so they get added last.
-//    reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
-//    reader.requestFormat(Texture::InternalFormat::RGBA8);
-//
-//    return reader.load(contents.data(), contents.size(),
-//            ktxreader::Ktx2Reader::TransferFunction::sRGB);
-//}
+IndexBuffer* getIndexBuffer() {
+    static IndexBuffer* ib;
+    
+    if(ib == nullptr) {
+#define MAXSTRINGLENGTH 200
+        const int LENGTH = 78 + MAXSTRINGLENGTH * 6;
+        static uint16_t TEMPLATE[LENGTH] = {
+            // 9-slices 16 vertices (0, 54)
+            0,  1,  2,  3,  2,  1,
+            1,  4,  3,  6,  3,  4,
+            4,  5,  6,  7,  6,  5,
+           10, 11,  0,  1,  0, 11,
+           11, 14,  1,  4,  1, 14,
+           14, 15,  4,  5,  4, 15,
+            8,  9, 10, 11, 10,  9,
+            9, 12, 11, 14, 11, 12,
+           12, 13, 14, 15, 14, 13,
+            // radial   17 vertices (54, 24)
+            1,  2,  8,  3,  4,  8,
+            5,  9,  8, 10, 15,  8,
+           16, 14,  8, 13, 12,  8,
+           11,  7,  8,  6,  0,  8,
+            // simple   4 vertices  (78, MAXSTRINGLENGTH * 6)
+        };
+        
+        uint16_t count = 0, id = 78;
+        for (int i = 0; i < MAXSTRINGLENGTH; i++) {
+            TEMPLATE[id + 0] = count + 0;
+            TEMPLATE[id + 1] = count + 1;
+            TEMPLATE[id + 2] = count + 2;
+            TEMPLATE[id + 3] = count + 3;
+            TEMPLATE[id + 4] = count + 2;
+            TEMPLATE[id + 5] = count + 1;
+
+            id += 6;
+            count += 4;
+        }
+        
+        ib = IndexBuffer::Builder()
+            .indexCount(LENGTH)
+            .bufferType(IndexBuffer::IndexType::USHORT)
+            .build(*engine);
+        ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(TEMPLATE, LENGTH * 2, nullptr));
+        
+//        for(int i = 0; i < 78 + MAXSTRINGLENGTH * 6; i++) cout << TEMPLATE[i] << ' ';
+    }
+    
+    return ib;
+}
 
 JSCALLBACK(updateRenderer) {
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
@@ -209,21 +243,18 @@ JSCALLBACK(updateRenderer) {
     VertexBuffer* vb = static_cast<VertexBuffer*>(data);
     
     array = JSValueToObject(ctx, arguments[1], nullptr);
-    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    size_t vc = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     data = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
     
-    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, count * 4, nullptr));
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, vc * 4, nullptr));
     
     if(argumentCount > 2) {
-        array = JSValueToObject(ctx, arguments[2], nullptr);
-        data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-        IndexBuffer* ib = static_cast<IndexBuffer*>(data);
-        
+        size_t count = JSValueToNumber(ctx, arguments[2], nullptr);
         uint32_t id = JSValueToNumber(ctx, arguments[3], nullptr);
         auto& rm = engine->getRenderableManager();
         auto instance = rm.getInstance(Entity::import(id));
         
-        rm.setGeometryAt(instance, 0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, count / 16 * 6);
+        rm.setGeometryAt(instance, 0, RenderableManager::PrimitiveType::TRIANGLES, vb, getIndexBuffer(), 78, count / 16 * 6);
     }
     
     return arguments[0];
@@ -285,20 +316,6 @@ JSCALLBACK(updateMaterial) {
 //    return arguments[0];
 //}
 
-JSCALLBACK(createIndexBuffer) {
-    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
-    size_t ic = JSObjectGetTypedArrayLength(ctx, array, nullptr);
-    void* INDICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-    
-    IndexBuffer* ib = IndexBuffer::Builder()
-        .indexCount((uint32_t)ic)
-        .bufferType(IndexBuffer::IndexType::USHORT)
-        .build(*engine);
-    ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, ic * 2, nullptr));
-    
-    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, ib, sizeof(ib), nullptr, nullptr, nullptr);
-}
-
 JSCALLBACK(renderText) {
     string filename = JSValueToStdString(ctx, arguments[0]);
     const Path parent = Path::getCurrentExecutable().getParent();
@@ -336,6 +353,7 @@ JSCALLBACK(renderText) {
     ascent = roundf(ascent * scale);
     descent = roundf(descent * scale);
     lineGap = roundf(lineGap * scale);
+    int min = descent;
     
     d[0] = ascent;
     d[1] = descent;
@@ -355,11 +373,14 @@ JSCALLBACK(renderText) {
         int c_x1, c_y1, c_x2, c_y2;
         stbtt_GetCodepointBitmapBox(&info, word[i], scale, scale, &c_x1, &c_y1, &c_x2, &c_y2);
         
+        if(c_y2 > min) min = c_y2;
+        
         /* compute y (different characters have different heights) */
         // int y = ascent + c_y1;
         if(x + ax > b_w) {
             x = 0;
-            y += ascent - descent + lineGap;
+            y += ascent + min / 2;
+            min = descent;
         }
         
         /* render character (stride and offset is important here) */
@@ -402,6 +423,7 @@ JSCALLBACK(renderText) {
             nullptr);
     
     texture->setImage(*engine, 0, move(pbd));
+    getIndexBuffer();
     
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, texture, sizeof(texture), nullptr, nullptr, nullptr);
 }
@@ -418,6 +440,7 @@ JSCALLBACK(addText) {
 //    size_t ic = JSObjectGetTypedArrayLength(ctx, array, nullptr);
 //    void* INDICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
 
+//    static IndexBuffer *ib;
     static Material *mat;
     
     if(mat == nullptr) {
@@ -474,29 +497,9 @@ JSCALLBACK(addRenderer){
     size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
 
-    static IndexBuffer *ib_4, *ib_16, *ib_17;
     static Material *mat, *mask;
     
     if(mat == nullptr) {
-        static constexpr uint16_t INDICES_4[6] = { 0, 1, 2, 3, 2, 1 };
-        static constexpr uint16_t INDICES_16[54] = {
-             0,  1,  2,  3,  2,  1,
-             1,  4,  3,  6,  3,  4,
-             4,  5,  6,  7,  6,  5,
-            10, 11,  0,  1,  0, 11,
-            11, 14,  1,  4,  1, 14,
-            14, 15,  4,  5,  4, 15,
-             8,  9, 10, 11, 10,  9,
-             9, 12, 11, 14, 11, 12,
-            12, 13, 14, 15, 14, 13,
-        };
-        static constexpr uint16_t INDICES_17[24] = {
-             1,  2,  8,  3,  4,  8,
-             5,  9,  8, 10, 15,  8,
-            16, 14,  8, 13, 12,  8,
-            11,  7,  8,  6,  0,  8,
-        };
-
         // This file is compiled via the matc tool. See the "Run Script" build phase.
         constexpr uint8_t BAKED_COLOR_PACKAGE[] = {
             #include "bakedColor.inc"
@@ -512,24 +515,6 @@ JSCALLBACK(addRenderer){
         mask = Material::Builder()
             .package((void*) BAKED_MASK_PACKAGE, sizeof(BAKED_MASK_PACKAGE))
             .build(*engine);
-        
-        ib_4 = IndexBuffer::Builder()
-            .indexCount(6)
-            .bufferType(IndexBuffer::IndexType::USHORT)
-            .build(*engine);
-        ib_4->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_4, 12, nullptr));
-        
-        ib_16 = IndexBuffer::Builder()
-            .indexCount(54)
-            .bufferType(IndexBuffer::IndexType::USHORT)
-            .build(*engine);
-        ib_16->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_16, 108, nullptr));
-        
-        ib_17 = IndexBuffer::Builder()
-            .indexCount(24)
-            .bufferType(IndexBuffer::IndexType::USHORT)
-            .build(*engine);
-        ib_17->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_17, 48, nullptr));
     }
     
     VertexBuffer* vb = VertexBuffer::Builder()
@@ -548,11 +533,22 @@ JSCALLBACK(addRenderer){
     Texture* texture = static_cast<Texture*>(data);
     matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
 
-    auto ib_t = count > 64 ? ib_17 : (count > 16 ? ib_16 : ib_4);
+    int offset = 0;
+    if(count > 64) {
+        offset = 54;
+        count = 24;
+    } else if(count > 16) {
+        offset = 0;
+        count = 54;
+    } else {
+        offset = 78;
+        count = 6;
+    }
+    
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
         .material(0, matInstance)
-        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib_t)
+        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, getIndexBuffer(), offset, count)
         .culling(true)
         .receiveShadows(false)
         .castShadows(false)
@@ -690,7 +686,6 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("loadImage", loadImage, globalObject);
     registerNativeFunction("addText", addText, globalObject);
     registerNativeFunction("renderText", renderText, globalObject);
-    registerNativeFunction("createIndexBuffer", createIndexBuffer, globalObject);
     
     const Path parent = Path::getCurrentExecutable().getParent();
 //    cout << (parent + filename) << endl;
