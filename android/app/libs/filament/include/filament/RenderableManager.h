@@ -40,7 +40,6 @@ namespace filament {
 class BufferObject;
 class Engine;
 class IndexBuffer;
-class Material;
 class MaterialInstance;
 class Renderer;
 class SkinningBuffer;
@@ -161,10 +160,17 @@ public:
         /**
          * Binds a material instance to the specified primitive.
          *
-         * If no material is specified for a given primitive, Filament will fall back to a basic default material.
+         * If no material is specified for a given primitive, Filament will fall back to a basic
+         * default material.
          *
-         * @param index zero-based index of the primitive, must be less than the count passed to Builder constructor
+         * The MaterialInstance's material must have a feature level equal or lower to the engine's
+         * selected feature level.
+         *
+         * @param index zero-based index of the primitive, must be less than the count passed to
+         * Builder constructor
          * @param materialInstance the material to bind
+         *
+         * @see Engine::setActiveFeatureLevel
          */
         Builder& material(size_t index, MaterialInstance const* materialInstance) noexcept;
 
@@ -200,19 +206,43 @@ public:
          *
          * In general Filament reserves the right to re-order renderables to allow for efficient
          * rendering. However clients can control ordering at a coarse level using \em priority.
+         * The priority is applied separately for opaque and translucent objects, that is, opaque
+         * objects are always drawn before translucent objects regardless of the priority.
          *
-         * For example, this could be used to draw a semitransparent HUD, if a client wishes to
-         * avoid using a separate View for the HUD. Note that priority is completely orthogonal to
+         * For example, this could be used to draw a semitransparent HUD on top of everything,
+         * without using a separate View. Note that priority is completely orthogonal to
          * Builder::layerMask, which merely controls visibility.
+         *
+         * The Skybox always using the lowest priority, so it's drawn last, which may improve
+         * performance.
          *
          * @param priority clamped to the range [0..7], defaults to 4; 7 is lowest priority
          *                 (rendered last).
          *
          * @return Builder reference for chaining calls.
          *
-         * @see Builder::blendOrder(), RenderableManager::setBlendOrderAt()
+         * @see Builder::blendOrder()
+         * @see Builder::channel()
+         * @see RenderableManager::setPriority()
+         * @see RenderableManager::setBlendOrderAt()
          */
         Builder& priority(uint8_t priority) noexcept;
+
+        /**
+         * Set the channel this renderable is associated to. There can be 4 channels.
+         * All renderables in a given channel are rendered together, regardless of anything else.
+         * They are sorted as usual withing a channel.
+         * Channels work similarly to priorities, except that they enforce the strongest ordering.
+         *
+         * @param channel clamped to the range [0..3], defaults to 0.
+         *
+         * @return Builder reference for chaining calls.
+         *
+         * @see Builder::blendOrder()
+         * @see Builder::priority()
+         * @see RenderableManager::setBlendOrderAt()
+         */
+        Builder& channel(uint8_t channel) noexcept;
 
         /**
          * Controls frustum culling, true by default.
@@ -456,6 +486,13 @@ public:
     void setPriority(Instance instance, uint8_t priority) noexcept;
 
     /**
+     * Changes the channel a renderable is associated to.
+     *
+     * \see Builder::channel().
+     */
+    void setChannel(Instance instance, uint8_t channel) noexcept;
+
+    /**
      * Changes whether or not frustum culling is on.
      *
      * \see Builder::culling()
@@ -561,6 +598,11 @@ public:
             MorphTargetBuffer* morphTargetBuffer);
 
     /**
+     * Get a MorphTargetBuffer to the given primitive or null if it doesn't exist.
+     */
+    MorphTargetBuffer* getMorphTargetBufferAt(Instance instance, uint8_t level, size_t primitiveIndex) const noexcept;
+
+    /**
      * Gets the number of morphing in the given entity.
      */
     size_t getMorphTargetCount(Instance instance) const noexcept;
@@ -590,10 +632,17 @@ public:
     /**
      * Changes the material instance binding for the given primitive.
      *
-     * \see Builder::material()
+     * The MaterialInstance's material must have a feature level equal or lower to the engine's
+     * selected feature level.
+     *
+     * @exception utils::PreConditionPanic if the engine doesn't support the material's
+     *                                     feature level.
+     *
+     * @see Builder::material()
+     * @see Engine::setActiveFeatureLevel
      */
     void setMaterialInstanceAt(Instance instance,
-            size_t primitiveIndex, MaterialInstance const* materialInstance) noexcept;
+            size_t primitiveIndex, MaterialInstance const* materialInstance);
 
     /**
      * Retrieves the material instance that is bound to the given primitive.

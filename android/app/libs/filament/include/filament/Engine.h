@@ -173,6 +173,29 @@ public:
      * Config is used to define the memory footprint used by the engine, such as the
      * command buffer size. Config can be used to customize engine requirements based 
      * on the applications needs.
+     *
+     *    .perRenderPassArenaSizeMB (default: 3 MiB)
+     *   +--------------------------+
+     *   |                          |
+     *   | .perFrameCommandsSizeMB  |
+     *   |    (default 2 MiB)       |
+     *   |                          |
+     *   +--------------------------+
+     *   |  (froxel, etc...)        |
+     *   +--------------------------+
+     *
+     *
+     *      .commandBufferSizeMB (default 3MiB)
+     *   +--------------------------+
+     *   | .minCommandBufferSizeMB  |
+     *   +--------------------------+
+     *   | .minCommandBufferSizeMB  |
+     *   +--------------------------+
+     *   | .minCommandBufferSizeMB  |
+     *   +--------------------------+
+     *   :                          :
+     *   :                          :
+     *
      */
     struct Config {
         /**
@@ -190,7 +213,7 @@ public:
 
 
         /**
-         * Size in MiB of the per-frame high level command buffer arena.
+         * Size in MiB of the per-frame data arena.
          *
          * This is the main arena used for allocations when preparing a frame.
          * e.g.: Froxel data and high-level commands are allocated from this arena.
@@ -402,6 +425,45 @@ public:
      * This method is thread-safe.
      */
     static void destroy(Engine* engine);
+
+    using FeatureLevel = backend::FeatureLevel;
+
+
+    /**
+     * Query the feature level supported by the selected backend.
+     *
+     * A specific feature level needs to be set before the corresponding features can be used.
+     *
+     * @return FeatureLevel supported the selected backend.
+     * @see setActiveFeatureLevel
+     */
+    FeatureLevel getSupportedFeatureLevel() const noexcept;
+
+    /**
+     * Activate all features of a given feature level. By default FeatureLevel::FEATURE_LEVEL_1 is
+     * active. The selected feature level must not be higher than the value returned by
+     * getActiveFeatureLevel() and it's not possible lower the active feature level.
+     *
+     * @param featureLevel the feature level to activate. If featureLevel is lower than
+     *                     getActiveFeatureLevel(), the current (higher) feature level is kept.
+     *                     If featureLevel is higher than getSupportedFeatureLevel(), an exception
+     *                     is thrown, or the program is terminated if exceptions are disabled.
+     *
+     * @return the active feature level.
+     *
+     * @see getSupportedFeatureLevel
+     * @see getActiveFeatureLevel
+     */
+    FeatureLevel setActiveFeatureLevel(FeatureLevel featureLevel);
+
+    /**
+     * Returns the currently active feature level.
+     * @return currently active feature level
+     * @see getSupportedFeatureLevel
+     * @see setActiveFeatureLevel
+     */
+    FeatureLevel getActiveFeatureLevel() const noexcept;
+
 
     /**
      * @return EntityManager used by filament
@@ -662,6 +724,22 @@ public:
       * @return JobSystem used by filament
       */
     utils::JobSystem& getJobSystem() noexcept;
+
+#if defined(__EMSCRIPTEN__)
+    /**
+      * WebGL only: Tells the driver to reset any internal state tracking if necessary.
+      * 
+      * This is only useful when integrating an external renderer into Filament on platforms 
+      * like WebGL, where share contexts do not exist. Filament keeps track of the GL
+      * state it has set (like which texture is bound), and does not re-set that state if
+      * it does not think it needs to. However, if an external renderer has set different
+      * state in the mean time, Filament will use that new state unknowingly.
+      * 
+      * If you are in this situation, call this function - ideally only once per frame, 
+      * immediately after calling Engine::execute().
+      */
+    void resetBackendState() noexcept;
+#endif
 
     DebugRegistry& getDebugRegistry() noexcept;
 

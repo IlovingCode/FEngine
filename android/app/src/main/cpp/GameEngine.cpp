@@ -11,6 +11,9 @@
 // defines DEBUG=1. So, we simply undefine it here. This will be fixed in the next release.
 #undef DEBUG
 
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "stb_truetype.h"
+
 // These are all C++ headers, so make sure the type of this file is Objective-C++ source.
 #include <ktxreader/Ktx2Reader.h>
 
@@ -28,6 +31,7 @@
 #include <filament/MaterialInstance.h>
 #include <filament/TransformManager.h>
 #include <filament/TextureSampler.h>
+#include <filament/Texture.h>
 
 #include <utils/Entity.h>
 #include <utils/Path.h>
@@ -36,7 +40,11 @@
 #include <gltfio/math.h>
 
 #include <JavaScriptCore/JavaScript.h>
+#ifdef ANDROID
 #include <android/asset_manager.h>
+#else
+#include <iostream>
+#endif
 #include <fstream>
 #include <sstream>
 
@@ -53,10 +61,14 @@ Engine* engine;
 Renderer* renderer;
 View* view;
 SwapChain* swapChain;
+
+#ifdef ANDROID
 AAssetManager* assetManager;
+#endif
 
 JSGlobalContextRef globalContext;
 double current_time;
+Path assets;
 
 GameEngine::~GameEngine(){
     engine->destroyCameraComponent(view->getCamera().getEntity());
@@ -89,12 +101,11 @@ string JSValueToStdString(JSContextRef context, JSValueRef jsValue) {
 
 JSCALLBACK(log){
     string str = "";
-
     for (uint8_t i = 0; i < argumentCount; i++) {
         str += JSValueToStdString(ctx, arguments[i]) + ' ';
-    };
-
-    LOGI("%s", str.c_str());
+    }
+    LOGI("%s\n", str.c_str());
+    
     return nullptr;
 }
 
@@ -114,7 +125,6 @@ JSCALLBACK(createEntity){
         auto& tcm = engine->getTransformManager();
         Entity parent = Entity::import(id);
         tcm.create(e, tcm.getInstance(parent));
-//        cout << tcm.getChildCount(tcm.getInstance(parent));
     }
     
     return JSValueMakeNumber(ctx, Entity::smuggle(e));
@@ -169,13 +179,19 @@ JSCALLBACK(getWorldTransform){
 
 JSCALLBACK(loadImage) {
     string filename = JSValueToStdString(ctx, arguments[0]);
-//    const Path parent = Path::getCurrentExecutable().getParent();
-//    cout << (parent + (filename + ".ktx2")) << endl;
+    const void* data = nullptr;
+    size_t size = 0;
 
-//    ifstream file(parent + filename, ios::binary);
-//    const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
-
+#ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
+    data = AAsset_getBuffer(asset);
+    size = AAsset_getLength(asset);
+#else
+    ifstream file(assets + filename, ios::binary);
+    const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
+    data = stream.data();
+    size = stream.size();
+#endif
 
     ktxreader::Ktx2Reader reader(*engine);
 
@@ -183,27 +199,58 @@ JSCALLBACK(loadImage) {
     reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
     reader.requestFormat(Texture::InternalFormat::RGBA8);
 
-    Texture* texture = reader.load(AAsset_getBuffer(asset), AAsset_getLength(asset),
-            ktxreader::Ktx2Reader::TransferFunction::sRGB);
-
+    Texture* texture = reader.load(data, size, ktxreader::Ktx2Reader::TransferFunction::sRGB);
+    
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, texture, sizeof(texture), nullptr, nullptr, nullptr);
 }
 
-//Texture* loadImage(string filename) {
-//    const Path parent = Path::getCurrentExecutable().getParent();
-////    cout << (parent + filename) << endl;
-//    ifstream file(parent + filename, ios::binary);
-//    const auto contents = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
-//
-//    ktxreader::Ktx2Reader reader(*engine);
-//
-//    // Uncompressed formats are lower priority, so they get added last.
-//    reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
-//    reader.requestFormat(Texture::InternalFormat::RGBA8);
-//
-//    return reader.load(contents.data(), contents.size(),
-//            ktxreader::Ktx2Reader::TransferFunction::sRGB);
-//}
+IndexBuffer* getIndexBuffer() {
+    static IndexBuffer* ib;
+    
+    if(ib == nullptr) {
+#define MAXSTRINGLENGTH 200
+        const int LENGTH = 78 + MAXSTRINGLENGTH * 6;
+        static uint16_t TEMPLATE[LENGTH] = {
+            // 9-slices 16 vertices (0, 54)
+            0,  1,  2,  3,  2,  1,
+            1,  4,  3,  6,  3,  4,
+            4,  5,  6,  7,  6,  5,
+           10, 11,  0,  1,  0, 11,
+           11, 14,  1,  4,  1, 14,
+           14, 15,  4,  5,  4, 15,
+            8,  9, 10, 11, 10,  9,
+            9, 12, 11, 14, 11, 12,
+           12, 13, 14, 15, 14, 13,
+            // radial   17 vertices (54, 24)
+            1,  2,  8,  3,  4,  8,
+            5,  9,  8, 10, 15,  8,
+           16, 14,  8, 13, 12,  8,
+           11,  7,  8,  6,  0,  8,
+            // simple   4 vertices  (78, MAXSTRINGLENGTH * 6)
+        };
+        
+        uint16_t count = 0, id = 78;
+        for (int i = 0; i < MAXSTRINGLENGTH; i++) {
+            TEMPLATE[id + 0] = count + 0;
+            TEMPLATE[id + 1] = count + 1;
+            TEMPLATE[id + 2] = count + 2;
+            TEMPLATE[id + 3] = count + 3;
+            TEMPLATE[id + 4] = count + 2;
+            TEMPLATE[id + 5] = count + 1;
+
+            id += 6;
+            count += 4;
+        }
+        
+        ib = IndexBuffer::Builder()
+            .indexCount(LENGTH)
+            .bufferType(IndexBuffer::IndexType::USHORT)
+            .build(*engine);
+        ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(TEMPLATE, LENGTH * 2, nullptr));
+    }
+    
+    return ib;
+}
 
 JSCALLBACK(updateRenderer) {
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
@@ -211,31 +258,51 @@ JSCALLBACK(updateRenderer) {
     VertexBuffer* vb = static_cast<VertexBuffer*>(data);
     
     array = JSValueToObject(ctx, arguments[1], nullptr);
-    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    size_t vc = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     data = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
     
-    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, count * 4, nullptr));
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, vc * 4, nullptr));
+    
+    if(argumentCount > 2) {
+        size_t count = JSValueToNumber(ctx, arguments[2], nullptr);
+        uint32_t id = JSValueToNumber(ctx, arguments[3], nullptr);
+        auto& rm = engine->getRenderableManager();
+        auto instance = rm.getInstance(Entity::import(id));
+        
+        rm.setGeometryAt(instance, 0, RenderableManager::PrimitiveType::TRIANGLES, vb, getIndexBuffer(), 78, count / 16 * 6);
+    }
     
     return arguments[0];
 }
 
 JSCALLBACK(updateMaterial) {
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
-    bool isMask = JSValueToBoolean(ctx, arguments[1]);
-    bool isVisible = JSValueToBoolean(ctx, arguments[2]);
     
     auto& rm = engine->getRenderableManager();
     auto instance = rm.getInstance(Entity::import(id));
     MaterialInstance* material = rm.getMaterialInstanceAt(instance, 0);
-
-    if(isVisible) {
-        material->setDepthWrite(isMask);
-        material->setDepthCulling(!isMask);
-        material->setColorWrite(!isMask);
+    
+    if(argumentCount > 3) {
+        double red = JSValueToNumber(ctx, arguments[1], nullptr);
+        double green = JSValueToNumber(ctx, arguments[2], nullptr);
+        double blue = JSValueToNumber(ctx, arguments[3], nullptr);
+        double alpha = JSValueToNumber(ctx, arguments[4], nullptr);
+        
+        material->setParameter("baseColor", RgbaType::LINEAR, math::float4{red, green, blue, alpha});
+    } else if (argumentCount > 2) {
+        bool isVisible = JSValueToBoolean(ctx, arguments[1]);
+//        uint8_t priority = JSValueToNumber(ctx, arguments[2], nullptr);
+        
+        rm.setLayerMask(instance, 0xff, isVisible ? 0xff : 0x00);
+//        rm.setPriority(instance, priority);
+    } else {
+        JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+        Texture* texture = static_cast<Texture*>(data);
+        
+        material->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
     }
     
-    rm.setLayerMask(instance, 0xff, isVisible ? 0xff : 0x00);
-
     return arguments[0];
 }
 
@@ -264,6 +331,188 @@ JSCALLBACK(updateMaterial) {
 //    return arguments[0];
 //}
 
+JSCALLBACK(renderText) {
+    string filename = JSValueToStdString(ctx, arguments[0]);
+    const unsigned char* data = nullptr;
+#ifdef ANDROID
+    AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
+    data = static_cast<const unsigned char *>(AAsset_getBuffer(asset));
+#else
+    ifstream file(assets + filename, ios::binary);
+    const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
+    data = stream.data();
+#endif
+    
+    string word = JSValueToStdString(ctx, arguments[1]);
+    
+    JSObjectRef array = JSValueToObject(ctx, arguments[2], nullptr);
+//    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    short* d = static_cast<short*>(buffer);
+    
+    /* prepare font */
+    stbtt_fontinfo info;
+    if (!stbtt_InitFont(&info, data, 0)) return nullptr;
+    
+    int b_w = JSValueToNumber(ctx, arguments[3], nullptr); /* bitmap width */
+    int b_h = JSValueToNumber(ctx, arguments[4], nullptr); /* bitmap height */
+    int l_h = JSValueToNumber(ctx, arguments[5], nullptr); /* line height */
+
+    /* create a bitmap for the phrase */
+    unsigned char* bitmap = (unsigned char*)calloc(b_w * b_h, sizeof(unsigned char));
+    
+    /* calculate font scaling */
+    float scale = stbtt_ScaleForPixelHeight(&info, l_h);
+    
+    int x = 0;
+    int y = 0;
+       
+    int ascent, descent, lineGap;
+    stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
+    
+    ascent = roundf(ascent * scale);
+    descent = roundf(descent * scale);
+    lineGap = roundf(lineGap * scale);
+    int min = descent;
+    
+    d[0] = ascent;
+    d[1] = descent;
+    d[2] = lineGap;
+    
+    for (int i = 0; i < word.length(); ++i)
+    {
+        /* how wide is this character */
+        int ax;
+        int lsb;
+        stbtt_GetCodepointHMetrics(&info, word[i], &ax, &lsb);
+        ax = roundf(ax * scale);
+        lsb = roundf(lsb * scale);
+        /* (Note that each Codepoint call has an alternative Glyph version which caches the work required to lookup the character word[i].) */
+
+        /* get bounding box for character (may be offset to account for chars that dip above or below the line) */
+        int c_x1, c_y1, c_x2, c_y2;
+        stbtt_GetCodepointBitmapBox(&info, word[i], scale, scale, &c_x1, &c_y1, &c_x2, &c_y2);
+        
+        if(c_y2 > min) min = c_y2;
+        
+        /* compute y (different characters have different heights) */
+        // int y = ascent + c_y1;
+        if(x + ax > b_w) {
+            x = 0;
+            y += ascent + min / 2;
+            min = descent;
+        }
+        
+        /* render character (stride and offset is important here) */
+        int byteOffset = x + lsb + (y + ascent + c_y1) * b_w;
+        stbtt_MakeCodepointBitmap(&info, bitmap + byteOffset, c_x2 - c_x1, c_y2 - c_y1, b_w, scale, scale, word[i]);
+
+        byteOffset = i * 7 + 3;
+        d[byteOffset + 0] = ax;
+        d[byteOffset + 1] = lsb;
+        d[byteOffset + 2] = c_y1;
+        d[byteOffset + 3] = c_x2 - c_x1;
+        d[byteOffset + 4] = c_y2 - c_y1;
+        d[byteOffset + 5] = x + lsb;
+        d[byteOffset + 6] = y + ascent + c_y1;
+        
+        /* advance x */
+        x += ax;
+        
+        /* add kerning */
+//        int kern;
+//        kern = stbtt_GetCodepointKernAdvance(&info, word[i], word[i + 1]);
+//        x += roundf(kern * scale);
+    }
+    
+    Texture* texture = Texture::Builder()
+        .format(Texture::InternalFormat::R8)
+        .width(b_w)
+        .height(b_h)
+        .build(*engine);
+    
+    Texture::PixelBufferDescriptor::Callback freeCallback = [](void* buf, size_t, void* userdata) {
+        free(buf);
+    };
+
+    Texture::PixelBufferDescriptor pbd(
+            bitmap, b_w * b_h,
+            Texture::PixelBufferDescriptor::PixelDataFormat::R,
+            Texture::PixelBufferDescriptor::PixelDataType::UBYTE,
+            freeCallback,
+            nullptr);
+    
+    texture->setImage(*engine, 0, move(pbd));
+    getIndexBuffer();
+    
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, texture, sizeof(texture), nullptr, nullptr, nullptr);
+}
+
+JSCALLBACK(addText) {
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    Entity entity = Entity::import(id);
+    
+    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+    size_t vc = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    
+//    array = JSValueToObject(ctx, arguments[2], nullptr);
+//    size_t ic = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+//    void* INDICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+
+//    static IndexBuffer *ib;
+    static Material *mat;
+    
+    if(mat == nullptr) {
+        // This file is compiled via the matc tool. See the "Run Script" build phase.
+        constexpr uint8_t BAKED_TEXT_PACKAGE[] = {
+#ifdef ANDROID
+            #include "bakedText.inc"
+#else
+            #include "bakedText_ios.inc"
+#endif
+        };
+
+        mat = Material::Builder()
+            .package((void*) BAKED_TEXT_PACKAGE, sizeof(BAKED_TEXT_PACKAGE))
+            .build(*engine);
+        
+        mat->setDefaultParameter("baseColor", RgbaType::LINEAR, math::float4{1, 1, 1, 1});
+    }
+    
+//    IndexBuffer* ib = IndexBuffer::Builder()
+//        .indexCount((uint32_t)ic)
+//        .bufferType(IndexBuffer::IndexType::USHORT)
+//        .build(*engine);
+//    ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES, ic * 2, nullptr));
+    
+    VertexBuffer* vb = VertexBuffer::Builder()
+        .vertexCount((uint32_t)vc / 4)
+        .bufferCount(1)
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 16)
+        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 8, 16)
+        .build(*engine);
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, vc * 4, nullptr));
+
+    auto matInstance = mat->createInstance();
+    
+    array = JSValueToObject(ctx, arguments[2], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Texture* texture = static_cast<Texture*>(data);
+    matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+
+    RenderableManager::Builder(1)
+        .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
+        .material(0, matInstance)
+//        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
+        .culling(true)
+        .receiveShadows(false)
+        .castShadows(false)
+        .build(*engine, entity);
+    
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, vb, sizeof(vb), nullptr, nullptr, nullptr);
+}
+
 JSCALLBACK(addRenderer){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
@@ -272,55 +521,32 @@ JSCALLBACK(addRenderer){
     size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
 
-    static IndexBuffer *ib_4, *ib_16, *ib_17;
-    static Material *mat;
+    static Material *mat, *mask;
     
     if(mat == nullptr) {
-        static constexpr uint16_t INDICES_4[6] = { 0, 1, 2, 3, 2, 1 };
-        static constexpr uint16_t INDICES_16[54] = {
-             0,  1,  2,  3,  2,  1,
-             1,  4,  3,  6,  3,  4,
-             4,  5,  6,  7,  6,  5,
-            10, 11,  0,  1,  0, 11,
-            11, 14,  1,  4,  1, 14,
-            14, 15,  4,  5,  4, 15,
-             8,  9, 10, 11, 10,  9,
-             9, 12, 11, 14, 11, 12,
-            12, 13, 14, 15, 14, 13,
-        };
-        static constexpr uint16_t INDICES_17[24] = {
-             1,  2,  8,  3,  4,  8,
-             5,  9,  8, 10, 15,  8,
-            16, 14,  8, 13, 12,  8,
-            11,  7,  8,  6,  0,  8,
-        };
-
         // This file is compiled via the matc tool. See the "Run Script" build phase.
         constexpr uint8_t BAKED_COLOR_PACKAGE[] = {
+#ifdef ANDROID
             #include "bakedColor.inc"
+#else
+            #include "bakedColor_ios.inc"
+#endif
+        };
+        constexpr uint8_t BAKED_MASK_PACKAGE[] = {
+#ifdef ANDROID
+            #include "bakedMask.inc"
+#else
+            #include "bakedMask_ios.inc"
+#endif
         };
         
         mat = Material::Builder()
             .package((void*) BAKED_COLOR_PACKAGE, sizeof(BAKED_COLOR_PACKAGE))
             .build(*engine);
         
-        ib_4 = IndexBuffer::Builder()
-            .indexCount(6)
-            .bufferType(IndexBuffer::IndexType::USHORT)
+        mask = Material::Builder()
+            .package((void*) BAKED_MASK_PACKAGE, sizeof(BAKED_MASK_PACKAGE))
             .build(*engine);
-        ib_4->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_4, 12, nullptr));
-        
-        ib_16 = IndexBuffer::Builder()
-            .indexCount(54)
-            .bufferType(IndexBuffer::IndexType::USHORT)
-            .build(*engine);
-        ib_16->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_16, 108, nullptr));
-        
-        ib_17 = IndexBuffer::Builder()
-            .indexCount(24)
-            .bufferType(IndexBuffer::IndexType::USHORT)
-            .build(*engine);
-        ib_17->setBuffer(*engine, IndexBuffer::BufferDescriptor(INDICES_17, 48, nullptr));
     }
     
     VertexBuffer* vb = VertexBuffer::Builder()
@@ -331,24 +557,31 @@ JSCALLBACK(addRenderer){
         .build(*engine);
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, count * 4, nullptr));
 
-    auto matInstance = mat->createInstance();
-    matInstance->setDepthCulling(true);
-    matInstance->setColorWrite(true);
-    matInstance->setDepthWrite(false);
-    
-    if(argumentCount > 2) {
-        array = JSValueToObject(ctx, arguments[2], nullptr);
-        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-        Texture* texture = static_cast<Texture*>(data);
-        matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
-    }
+    bool isMask = JSValueToBoolean(ctx, arguments[3]);
+    auto matInstance = (isMask ? mask : mat)->createInstance();
 
-    auto ib_t = count > 64 ? ib_17 : (count > 16 ? ib_16 : ib_4);
+    array = JSValueToObject(ctx, arguments[2], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Texture* texture = static_cast<Texture*>(data);
+    matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+
+    int offset = 0;
+    if(count > 64) {
+        offset = 54;
+        count = 24;
+    } else if(count > 16) {
+        offset = 0;
+        count = 54;
+    } else {
+        offset = 78;
+        count = 6;
+    }
+    
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
         .material(0, matInstance)
-        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib_t, 0, ib_t->getIndexCount())
-        .culling(false)
+        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, getIndexBuffer(), offset, count)
+        .culling(true)
         .receiveShadows(false)
         .castShadows(false)
         .build(*engine, entity);
@@ -362,14 +595,12 @@ JSCALLBACK(updateTransforms){
     void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
     float* d = static_cast<float*>(buffer);
 
-//    cout << count << endl;
-    size_t strike = 10;
-//    count /= strike;
+    const uint8_t STRIKE = 10;
     
     auto& tcm = engine->getTransformManager();
     tcm.openLocalTransformTransaction();
     
-    for (uint32_t i = 0; i < count; i += strike) {
+    for (uint32_t i = 0; i < count; i += STRIKE) {
         uint32_t id = d[i];
         
         math::float3 pos { d[i + 1], d[i + 2], d[i + 3] };
@@ -435,8 +666,6 @@ JSObjectRef getScriptFunction(const char* name, JSObjectRef thisObject){
 }
 
 void GameEngine::input(float x, float y, uint8_t state) {
-//    cout<< state << endl;
-    
     static JSStringRef xStr, yStr, stateStr;
     static JSObjectRef input;
     
@@ -462,16 +691,22 @@ void GameEngine::input(float x, float y, uint8_t state) {
 }
 
 GameEngine::GameEngine(void* nativeWindow){
-    engine = Engine::create(Engine::Backend::OPENGL);
+    engine = Engine::create(
+#ifdef ANDROID
+    Engine::Backend::OPENGL
+#else
+    Engine::Backend::METAL
+#endif
+    );
     swapChain = engine->createSwapChain(nativeWindow);
     renderer = engine->createRenderer();
     view = engine->createView();
     
     renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = true});
-
+    
     globalContext = JSGlobalContextCreate(nullptr);
     JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
-
+    
     registerNativeFunction("beginScene", beginScene, globalObject);
     registerNativeFunction("addCamera", addCamera, globalObject);
     registerNativeFunction("log", log, globalObject);
@@ -483,10 +718,31 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("updateMaterial", updateMaterial, globalObject);
     registerNativeFunction("getWorldTransform", getWorldTransform, globalObject);
     registerNativeFunction("loadImage", loadImage, globalObject);
-
+    registerNativeFunction("addText", addText, globalObject);
+    registerNativeFunction("renderText", renderText, globalObject);
+    
+#ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);
     string source = string((const char *)AAsset_getBuffer(asset), AAsset_getLength(asset) - 1);
     AAsset_close(asset);
+
+    asset = AAssetManager_open(assetManager, "bundle_game.js", 0);
+    source += string((const char *)AAsset_getBuffer(asset), AAsset_getLength(asset) - 1);
+    AAsset_close(asset);
+#else
+    assets = Path::getCurrentExecutable().getParent() + "assets/";
+    
+    ifstream file(assets + "bundle.js");
+    ostringstream buffer;
+    buffer << file.rdbuf();
+    file.close();
+
+    ifstream file_game(assets + "bundle_game.js");
+    buffer << file_game.rdbuf();
+    file_game.close();
+
+    string source = buffer.str();
+#endif
 
     JSValueRef exception = nullptr;
     JSStringRef script = JSStringCreateWithUTF8CString(source.c_str());

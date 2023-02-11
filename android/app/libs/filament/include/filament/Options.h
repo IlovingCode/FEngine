@@ -391,6 +391,22 @@ struct VsmShadowOptions {
     bool mipmapping = false;
 
     /**
+     * The number of MSAA samples to use when rendering VSM shadow maps.
+     * Must be a power-of-two and greater than or equal to 1. A value of 1 effectively turns
+     * off MSAA.
+     * Higher values may not be available depending on the underlying hardware.
+     */
+    uint8_t msaaSamples = 1;
+
+    /**
+     * Whether to use a 32-bits or 16-bits texture format for VSM shadow maps. 32-bits
+     * precision is rarely needed, but it does reduces light leaks as well as "fading"
+     * of the shadows in some situations. Setting highPrecision to true for a single
+     * shadow map will double the memory usage of all shadow maps.
+     */
+    bool highPrecision = false;
+
+    /**
      * VSM minimum variance scale, must be positive.
      */
     float minVarianceScale = 0.5f;

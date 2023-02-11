@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2015 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef TNT_UTILS_GENERIC_MUTEX_H
-#define TNT_UTILS_GENERIC_MUTEX_H
+#ifndef TNT_FILAMENT_BACKEND_PRIVATE_DRIVERAPIFORWARD_H
+#define TNT_FILAMENT_BACKEND_PRIVATE_DRIVERAPIFORWARD_H
 
-#include <mutex>
+namespace filament::backend {
 
-namespace utils {
+class CommandStream;
 
-using Mutex = std::mutex;
+using DriverApi = CommandStream;
 
-} // namespace utils
+} // namespace filament::backend
 
-#endif // TNT_UTILS_GENERIC_MUTEX_H
+#endif // TNT_FILAMENT_BACKEND_PRIVATE_DRIVERAPIFORWARD_H

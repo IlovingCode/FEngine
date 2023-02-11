@@ -53,6 +53,8 @@ class Game extends Component {
     }
 
     update(dt) {
+        globalThis.log('dt:', dt)
+
         this.timer += dt
 
         for (let i = 2; i < 4; i++) {
@@ -172,4 +174,4 @@ var init = function () {
     node.getComponent(BoundBox2D).setAlignment(0, 1, 0, 0, 0, 10)
 }
 
-init()
+init();

@@ -15,18 +15,12 @@
 		43C0904524B7DCE9009D291E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 43C0904424B7DCE9009D291E /* Assets.xcassets */; };
 		43C0904824B7DCE9009D291E /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 43C0904624B7DCE9009D291E /* LaunchScreen.storyboard */; };
 		43C0904B24B7DCE9009D291E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 43C0904A24B7DCE9009D291E /* main.m */; };
-		6C2933E529856E1900BF4D82 /* bundle_game.js in Resources */ = {isa = PBXBuildFile; fileRef = 6C2933E429856E1900BF4D82 /* bundle_game.js */; };
-		6CC0A4E1298135B500A75D4F /* bakedText.inc in Sources */ = {isa = PBXBuildFile; fileRef = 6CC0A4E0298135B500A75D4F /* bakedText.inc */; };
-		AE1D8A28284E989C0031A866 /* bakedColor.inc in Sources */ = {isa = PBXBuildFile; fileRef = AE1D8A23284E989C0031A866 /* bakedColor.inc */; };
-		AE1D8A2A284E989C0031A866 /* bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = AE1D8A25284E989C0031A866 /* bundle.js */; };
-		AE1D8A2B284E989C0031A866 /* GameEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AE1D8A27284E989C0031A866 /* GameEngine.cpp */; };
+		AE1C45B129979318007B5933 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = AE1C45B029979318007B5933 /* assets */; };
 		AE1D8A2D284E98EA0031A866 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */; };
-		AE6655612946590500E14DCB /* cmunrm.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AE6655602946590500E14DCB /* cmunrm.ttf */; };
-		AE84734D28EA260E00BDB287 /* red.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AE84734C28EA260E00BDB287 /* red.ktx2 */; };
-		AE85DEF728FB0F1C00521ABE /* progress_fill.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AE85DEF528FB0F1C00521ABE /* progress_fill.ktx2 */; };
-		AE85DEF828FB0F1C00521ABE /* progress_bg.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AE85DEF628FB0F1C00521ABE /* progress_bg.ktx2 */; };
-		AE8AEA41298E4B9C00C86BE6 /* bakedMask.inc in Sources */ = {isa = PBXBuildFile; fileRef = AE8AEA40298E4B9C00C86BE6 /* bakedMask.inc */; };
-		AEFC712928D7598E0029C879 /* tiny.ktx2 in Resources */ = {isa = PBXBuildFile; fileRef = AEFC712828D7598E0029C879 /* tiny.ktx2 */; };
+		AEB37A692997A561009539B0 /* GameEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A682997A561009539B0 /* GameEngine.cpp */; };
+		AEB37A6D2997AB45009539B0 /* bakedColor_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6A2997AB45009539B0 /* bakedColor_ios.inc */; };
+		AEB37A6E2997AB45009539B0 /* bakedText_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6B2997AB45009539B0 /* bakedText_ios.inc */; };
+		AEB37A6F2997AB45009539B0 /* bakedMask_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6C2997AB45009539B0 /* bakedMask_ios.inc */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,21 +37,15 @@
 		43C0904924B7DCE9009D291E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		43C0904A24B7DCE9009D291E /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		43C0905124B7DF20009D291E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
-		6C2933E429856E1900BF4D82 /* bundle_game.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = bundle_game.js; sourceTree = "<group>"; };
-		6CC0A4E0298135B500A75D4F /* bakedText.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = bakedText.inc; sourceTree = "<group>"; };
 		9B0B8E3424AB80B4FB0F5FF1 /* Pods-HelloCocoaPods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.release.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.release.xcconfig"; sourceTree = "<group>"; };
-		AE1D8A23284E989C0031A866 /* bakedColor.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = bakedColor.inc; sourceTree = "<group>"; };
-		AE1D8A25284E989C0031A866 /* bundle.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = bundle.js; sourceTree = "<group>"; };
-		AE1D8A26284E989C0031A866 /* GameEngine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = GameEngine.hpp; sourceTree = "<group>"; };
-		AE1D8A27284E989C0031A866 /* GameEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GameEngine.cpp; sourceTree = "<group>"; };
+		AE1C45B029979318007B5933 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = ../../android/app/src/main/assets; sourceTree = "<group>"; };
 		AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		AE6655602946590500E14DCB /* cmunrm.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = cmunrm.ttf; sourceTree = "<group>"; };
-		AE665562294659AB00E14DCB /* stb_truetype.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_truetype.h; sourceTree = "<group>"; };
-		AE84734C28EA260E00BDB287 /* red.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = red.ktx2; sourceTree = "<group>"; };
-		AE85DEF528FB0F1C00521ABE /* progress_fill.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = progress_fill.ktx2; sourceTree = "<group>"; };
-		AE85DEF628FB0F1C00521ABE /* progress_bg.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = progress_bg.ktx2; sourceTree = "<group>"; };
-		AE8AEA40298E4B9C00C86BE6 /* bakedMask.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = bakedMask.inc; sourceTree = "<group>"; };
-		AEFC712828D7598E0029C879 /* tiny.ktx2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = tiny.ktx2; sourceTree = "<group>"; };
+		AEB37A662997A4D0009539B0 /* stb_truetype.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = stb_truetype.h; path = ../../android/app/src/main/cpp/stb_truetype.h; sourceTree = "<group>"; };
+		AEB37A672997A561009539B0 /* GameEngine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = GameEngine.hpp; path = ../../android/app/src/main/cpp/GameEngine.hpp; sourceTree = "<group>"; };
+		AEB37A682997A561009539B0 /* GameEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = GameEngine.cpp; path = ../../android/app/src/main/cpp/GameEngine.cpp; sourceTree = "<group>"; };
+		AEB37A6A2997AB45009539B0 /* bakedColor_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedColor_ios.inc; path = ../../android/app/src/main/cpp/bakedColor_ios.inc; sourceTree = "<group>"; };
+		AEB37A6B2997AB45009539B0 /* bakedText_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedText_ios.inc; path = ../../android/app/src/main/cpp/bakedText_ios.inc; sourceTree = "<group>"; };
+		AEB37A6C2997AB45009539B0 /* bakedMask_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedMask_ios.inc; path = ../../android/app/src/main/cpp/bakedMask_ios.inc; sourceTree = "<group>"; };
 		D8F6B088AA46E901D4C80A53 /* libPods-HelloCocoaPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HelloCocoaPods.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DBDD44F53C2D94EF626D2238 /* Pods-HelloCocoaPods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.debug.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -96,25 +84,19 @@
 		43C0903724B7DCE8009D291E /* HelloCocoaPods */ = {
 			isa = PBXGroup;
 			children = (
-				6CC0A4E0298135B500A75D4F /* bakedText.inc */,
-				AE85DEF628FB0F1C00521ABE /* progress_bg.ktx2 */,
-				AE8AEA40298E4B9C00C86BE6 /* bakedMask.inc */,
-				AE85DEF528FB0F1C00521ABE /* progress_fill.ktx2 */,
-				AEFC712828D7598E0029C879 /* tiny.ktx2 */,
-				AE1D8A23284E989C0031A866 /* bakedColor.inc */,
-				AE1D8A25284E989C0031A866 /* bundle.js */,
-				AE1D8A27284E989C0031A866 /* GameEngine.cpp */,
-				6C2933E429856E1900BF4D82 /* bundle_game.js */,
-				AE1D8A26284E989C0031A866 /* GameEngine.hpp */,
-				AE665562294659AB00E14DCB /* stb_truetype.h */,
-				AE6655602946590500E14DCB /* cmunrm.ttf */,
-				AE84734C28EA260E00BDB287 /* red.ktx2 */,
+				AEB37A6A2997AB45009539B0 /* bakedColor_ios.inc */,
+				AEB37A6C2997AB45009539B0 /* bakedMask_ios.inc */,
+				AEB37A6B2997AB45009539B0 /* bakedText_ios.inc */,
+				AE1C45B029979318007B5933 /* assets */,
 				43C0903824B7DCE8009D291E /* AppDelegate.h */,
 				43C0903B24B7DCE8009D291E /* SceneDelegate.h */,
 				43C0903924B7DCE8009D291E /* AppDelegate.m */,
 				43C0903C24B7DCE8009D291E /* SceneDelegate.m */,
 				43C0903E24B7DCE8009D291E /* ViewController.h */,
 				43C0903F24B7DCE8009D291E /* ViewController.mm */,
+				AEB37A682997A561009539B0 /* GameEngine.cpp */,
+				AEB37A672997A561009539B0 /* GameEngine.hpp */,
+				AEB37A662997A4D0009539B0 /* stb_truetype.h */,
 				43C0904124B7DCE8009D291E /* Main.storyboard */,
 				43C0904424B7DCE9009D291E /* Assets.xcassets */,
 				43C0904624B7DCE9009D291E /* LaunchScreen.storyboard */,
@@ -202,13 +184,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				43C0904824B7DCE9009D291E /* LaunchScreen.storyboard in Resources */,
-				AE84734D28EA260E00BDB287 /* red.ktx2 in Resources */,
-				AEFC712928D7598E0029C879 /* tiny.ktx2 in Resources */,
-				AE1D8A2A284E989C0031A866 /* bundle.js in Resources */,
-				6C2933E529856E1900BF4D82 /* bundle_game.js in Resources */,
-				AE85DEF828FB0F1C00521ABE /* progress_bg.ktx2 in Resources */,
-				AE6655612946590500E14DCB /* cmunrm.ttf in Resources */,
-				AE85DEF728FB0F1C00521ABE /* progress_fill.ktx2 in Resources */,
+				AE1C45B129979318007B5933 /* assets in Resources */,
 				43C0904524B7DCE9009D291E /* Assets.xcassets in Resources */,
 				43C0904324B7DCE8009D291E /* Main.storyboard in Resources */,
 			);
@@ -246,14 +222,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AE8AEA41298E4B9C00C86BE6 /* bakedMask.inc in Sources */,
-				AE1D8A28284E989C0031A866 /* bakedColor.inc in Sources */,
 				43C0904024B7DCE8009D291E /* ViewController.mm in Sources */,
-				6CC0A4E1298135B500A75D4F /* bakedText.inc in Sources */,
 				43C0903A24B7DCE8009D291E /* AppDelegate.m in Sources */,
-				AE1D8A2B284E989C0031A866 /* GameEngine.cpp in Sources */,
+				AEB37A6E2997AB45009539B0 /* bakedText_ios.inc in Sources */,
 				43C0904B24B7DCE9009D291E /* main.m in Sources */,
 				43C0903D24B7DCE8009D291E /* SceneDelegate.m in Sources */,
+				AEB37A6D2997AB45009539B0 /* bakedColor_ios.inc in Sources */,
+				AEB37A6F2997AB45009539B0 /* bakedMask_ios.inc in Sources */,
+				AEB37A692997A561009539B0 /* GameEngine.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

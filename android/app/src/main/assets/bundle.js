@@ -15,6 +15,9 @@ class Vec4 {
     copy(target) { this.set(target.x, target.y, target.z, target.w) }
 
     clone() { return new Vec4(this.x, this.y, this.z, this.w) }
+
+    static ONE = new Vec4(1, 1, 1, 1)
+    static ZERO = new Vec4(0, 0, 0, 0)
 }
 
 class Vec3 {
@@ -30,7 +33,10 @@ class Vec3 {
 
     copy(target) { this.set(target.x, target.y, target.z) }
 
-    clone() { return new Vec4(this.x, this.y, this.z) }
+    clone() { return new Vec3(this.x, this.y, this.z) }
+
+    static ONE = new Vec3(1, 1, 1)
+    static ZERO = new Vec3(0, 0, 0)
 }
 
 class Vec2 {
@@ -45,26 +51,28 @@ class Vec2 {
 
     copy(target) { this.set(target.x, target.y) }
 
-    clone() { return new Vec4(this.x, this.y) }
+    clone() { return new Vec2(this.x, this.y) }
+
+    static ONE = new Vec2(1, 1)
+    static ZERO = new Vec2(0, 0)
 }
 
 class Node {
     worldPosition = new Vec3(0, 0, 0)
 
-    position = new Vec3(0, 0, 0)
+    position = new Vec3(0, 0, .1)
     rotation = new Vec3(0, 0, 0)
     scale = new Vec3(1, 1, 1)
     parent = null
     children = []
     components = []
-    native = new Float32Array(new ArrayBuffer(40))
+    native = new Float32Array(10)
     isDirty = true
+    isUpdated = false
     active = true
     globalActive = true
 
-    constructor(id = -1) {
-        this.native[0] = id
-    }
+    constructor(id = -1) { this.native[0] = id }
 
     id() { return this.native[0] }
 
@@ -79,15 +87,9 @@ class Node {
         if (this.globalActive == enabled) return
         this.globalActive = enabled
 
-        for (let i of this.components) {
-            if (i.enabled) {
-                i.onEnableChanged && i.onEnableChanged(enabled)
-            }
-        }
+        for (let i of this.components) i.enabled && i.onEnableChanged && i.onEnableChanged(enabled)
 
-        for (let i of this.children) {
-            i.active && i.onActive(enabled)
-        }
+        for (let i of this.children) i.active && i.onActive(enabled)
     }
 
     addChild(node) {
@@ -111,15 +113,23 @@ class Node {
         for (let i of this.components) if (i instanceof prototype) return i
     }
 
+    onDirty() {
+        this.isDirty = false
+        this.isUpdated = true
+        for (let i of this.children) i.onDirty()
+    }
+
     updateWorld() {
         let worldPos = this.worldPosition
 
-        if (this.isDirty) {
+        if (this.isUpdated) {
             let worldTransform = globalThis.getWorldTransform(this.native)
 
             worldPos.x = worldTransform[1]
             worldPos.y = worldTransform[2]
             worldPos.z = worldTransform[3]
+
+            this.isUpdated = false
         }
 
         return worldPos
@@ -358,57 +368,145 @@ class BoundBox2D extends Component {
     }
 }
 
-// class FastMask extends Component {
-//     bound = null
+class TextSimple extends Component {
+    // vb = null
+    // ib = null
+    // native = null
+    // textAlign = 0
+    // font = null
+    // size = 20
+    string = null
 
-//     constructor(node, width, height) {
-//         super(node)
+    constructor(node, font, size, align = 0, max = 10) {
+        super(node)
 
-//         let bound = node.getComponent(BoundBox2D)
-//         if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
-//         else bound.set(width, height)
+        let bound = node.getComponent(BoundBox2D)
+        let width = size * 2
+        let height = size
+        if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
+        else bound.setSize(width, height)
 
-//         this.bound = bound
+        bound.onBoundChanged = this.onBoundUpdated.bind(this)
 
-//         this.set(bound)
-//     }
+        this.font = font
+        this.size = size
+        this.textAlign = align
 
-//     set(bound) {
-//         let left = bound.left
-//         let bottom = bound.bottom
-//         let width = bound.right - left
-//         let height = bound.top - bottom
+        this.vb = new Float32Array(max * 16)
 
-//         let array = []
-//         let nodes = [this.node]
-//         while (nodes.length > 0) {
-//             let p = nodes.shift()
-//             if (p.getComponent(SpriteSimple) || p.getComponent(SpriteSliced))
-//                 array.push(p.id())
+        this.native = globalThis.addText(this.node.id(), this.vb, this.font.native)
+    }
 
-//             for (let i of p.children) nodes.push(i)
-//         }
+    setColor(r, g, b, a) {
+        globalThis.updateMaterial(this.node.id(), r, g, b, a)
+    }
 
-//         globalThis.updateScissor(new Uint32Array(array), left, bottom, width, height)
-//     }
-// }
+    setText(text) {
+        if (this.string == text) return
+
+        let bound = this.node.getComponent(BoundBox2D)
+
+        this.string = text
+        let { scale, ascent, descent, lineGap, data } = this.font
+
+        scale = this.size / scale
+        ascent *= scale
+        descent *= scale
+        lineGap *= scale
+
+        let lines = text.split(/\r\n|\r|\n/g)
+        let linesWidth = []
+        let max = 0
+        let x = 0
+        let y = 0
+        for (let l of lines) {
+            // let words = l.trim().split(' ')
+            l = l.trim()
+
+            let width = 0
+            for (let c of l) width += data[c].ax
+            if (width > max) max = width
+
+            y += ascent - descent + lineGap
+
+            lines[linesWidth.length] = l
+            linesWidth.push(width * scale)
+        }
+
+        max *= scale
+        bound.setSize(max, y - lineGap)
+
+        let vb = this.vb
+        let count = 0
+        let space = data[' '].ax * scale
+        y = -bound.top
+
+        for (let i = 0; i < lines.length; i++) {
+            x = bound.left + this.textAlign * (max - linesWidth[i])
+
+            for (let c of lines[i]) {
+                if (c == ' ') {
+                    x += space
+                    continue
+                }
+
+                let glyph = data[c]
+
+                let left = x + glyph.offsetX * scale
+                let top = -y - ascent - glyph.offsetY * scale
+                let right = left + glyph.width * scale
+                let bottom = top - glyph.height * scale
+                let u0 = glyph.u0
+                let u1 = glyph.u1
+                let v0 = glyph.v0
+                let v1 = glyph.v1
+
+                x += glyph.ax * scale
+
+                let buffer = [
+                    left, bottom, u0, v1,   //0
+                    right, bottom, u1, v1,  //1
+                    left, top, u0, v0,      //2
+                    right, top, u1, v0      //3
+                ]
+
+                vb.set(buffer, count)
+                count += 16
+            }
+
+            y += ascent - descent + lineGap
+        }
+
+        this.native = globalThis.updateRenderer(this.native, vb, count, this.node.id())
+    }
+
+    onBoundUpdated(bound) {
+        // let buffer = this.fillBuffer(bound)
+        // buffer && globalThis.updateRenderer(this.native, buffer)
+    }
+
+    onEnableChanged(enabled) {
+        globalThis.updateMaterial(this.node.id(), enabled, 0)
+    }
+}
 
 class SpriteSimple extends Component {
     vb = null
     native = null
-    isMask = false
 
-    constructor(node, image, width, height) {
+    constructor(node, image, isMask = false) {
         super(node)
 
         let bound = node.getComponent(BoundBox2D)
+        let width = image.width
+        let height = image.height
         if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
         else bound.setSize(width, height)
 
         bound.onBoundChanged = this.onBoundUpdated.bind(this)
 
         this.vb = this.createData(image)
-        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native)
+        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native, isMask)
     }
 
     onBoundUpdated(bound) {
@@ -416,15 +514,8 @@ class SpriteSimple extends Component {
         buffer && globalThis.updateRenderer(this.native, buffer)
     }
 
-    setMask(enabled) {
-        if (this.isMask == enabled) return
-
-        this.isMask = enabled
-        this.enabled && globalThis.updateMaterial(this.node.id(), enabled, true)
-    }
-
     onEnableChanged(enabled) {
-        globalThis.updateMaterial(this.node.id(), this.isMask, enabled)
+        globalThis.updateMaterial(this.node.id(), enabled, 0)
     }
 
     createData(image) {
@@ -457,9 +548,10 @@ class SpriteSimple extends Component {
         return vb
     }
 
-    // setSprite(image, width, height) {
-    //     globalThis.updateRenderer(this.native, this.fillBuffer(width, height))
-    // }
+    setSprite(image) {
+        this.node.getComponent(BoundBox2D).setSize(image.width, image.height)
+        globalThis.updateMaterial(this.node.id(), image.native)
+    }
 }
 
 class SpriteSliced extends SpriteSimple {
@@ -629,7 +721,7 @@ class SpriteRadial extends SpriteSimple {
         for (let i = 0; i < bias.length; i++) {
             let num = i % 2
 
-            if(count == i) {
+            if (count == i) {
                 bias[i] = num == 0 ? Math.tan(angle) : Math.tan(Math.PI / 4 - angle)
                 // bias[i] = count > i ? (1 - num) : num
             } else bias[i] = count > i ? (1 - num) : num
@@ -688,7 +780,6 @@ class Toggle extends Button {
         super(node)
 
         this.checkmark = node.children[0]
-1
         this.isChecked = this.checkmark.active
     }
 
@@ -724,14 +815,13 @@ class ScrollView extends Component {
     check(x, y, state) {
         if (this.target.checkInside(x, y)) {
             if (state == 3) this.scale = -1
+            if (state == 1) this.scale = 1
 
             this.deltaX = x - globalThis.input.prevX
             this.deltaY = y - globalThis.input.prevY
 
-            if (state == 1) this.scale = 1
-
-            return true
-        } else {
+            // return true
+        } else if (this.scale > 0) {
             this.scale = -1
         }
     }
@@ -755,11 +845,8 @@ class ScrollView extends Component {
 
         if (this.scale < 0) {
             s -= dt
-            if (s < 0) {
-                s = 0
-            }
-
-            this.scale = -s
+            if (s < 0) this.scale = 0
+            else this.scale = -s
         }
     }
 }
@@ -822,7 +909,7 @@ class Layout extends Component {
 
             if (t + right > pBound.right) {
                 tx = pBound.left + left
-                t = tx - spaceX
+                t = tx + bound.size.x
                 ty -= maxInRow + spaceY
             }
 
@@ -898,100 +985,31 @@ class ProgressCircle extends Component {
 
 let root = new Node
 let camera = null
-let designWidth = 640
-let designHeight = 960
-let textures = {
-    tiny: {
-        width: 2,
-        height: 2,
-        native: null
-    },
-    red: {
-        width: 2,
-        height: 2,
-        native: null
-    },
-    progress_bg: {
-        width: 510,
-        height: 32,
-        native: null,
-        top: 0,
-        bottom: 0,
-        left: 20,
-        right: 20
-    },
-    progress_fill: {
-        width: 56,
-        height: 28,
-        native: null,
-        top: 0,
-        bottom: 0,
-        left: 15,
-        right: 15
+
+var buildFont = function (font) {
+    let text = "QWERTYUIOPASDFGHJKLZXCVBNM1234567890qwertyuiopasdfghjklzxcvbnm!@#$%^&*()-=[];',./_+{}:\"<>?\\|`~ "
+    let buffer = new Int16Array(text.length * 7 + 4)
+
+    font.native = globalThis.renderText(font.name, text, buffer, font.width, font.height, font.scale)
+    font.ascent = buffer[0]
+    font.descent = buffer[1]
+    font.lineGap = buffer[2]
+
+    let count = 3
+    for (let i of text) {
+        let ax = buffer[count + 0]
+        let offsetX = buffer[count + 1]
+        let offsetY = buffer[count + 2]
+        let width = buffer[count + 3]
+        let height = buffer[count + 4]
+        let u0 = buffer[count + 5] / font.width
+        let v0 = 1 - buffer[count + 6] / font.height
+        let u1 = u0 + width / font.width
+        let v1 = v0 - height / font.height
+
+        font.data[i] = { ax, offsetX, offsetY, width, height, u0, v0, u1, v1 }
+        count += 7
     }
-}
-
-var init = function () {
-    beginScene()
-
-    for (let i in textures) {
-        textures[i].native = globalThis.loadImage(i + '.ktx2')
-    }
-
-    new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
-
-    let node = root.addChild()
-    new SpriteSimple(node, textures.tiny, 2000, 2000).setMask(true)
-
-    node = root.addChild()
-    node.position.z = 1
-    camera = new Camera(node)
-
-    for (let i = 0; i < 2; i++) {
-        node = root.addChild()
-        new SpriteSliced(node, textures.progress_bg, 200, 28)
-        node.getComponent(BoundBox2D).setAlignment(1, -1, 50 * (i + 1), 0, 30, 0)
-
-        let child = node.addChild()
-        new SpriteSliced(child, textures.progress_fill, 200, 28)
-
-        new ProgressBar(node).set(i * .2)
-
-        new Button(node)
-    }
-
-    node = root.addChild()
-    new SpriteSliced(node, textures.progress_bg, 50, 28)
-    node.getComponent(BoundBox2D).setAlignment(1, 1, 50, 0, 0, 50)
-
-    let child = node.addChild()
-    new SpriteSliced(child, textures.progress_fill, 50, 28)
-
-    new Toggle(node)
-
-    node = root.addChild()
-    new SpriteSimple(node, textures.tiny, 300, 300)
-
-    node = node.addChild()
-    node.position.z = -.1
-    new SpriteSimple(node, textures.tiny, 250, 250).setMask(true)
-    let scrollView = new ScrollView(node)
-
-    node = node.addChild()
-    new BoundBox2D(node, new Vec2(250, 100), new Vec2(.5, .5))
-    new Layout(node, 10, 10, 10, 10, 10, 10)
-
-    scrollView.setContent(node)
-
-    for (let i = 0; i < 200; i++) {
-        let child = node.addChild()
-
-        new SpriteSimple(child, textures.red, 20, 20)
-    }
-
-    node = root.addChild()
-    node.position.set(0, 250, 0)
-    new SpriteRadial(node, textures.red, 50, 50)
 }
 
 var input = {
@@ -1003,7 +1021,7 @@ var input = {
 }
 
 var resizeView = function (width, height) {
-    let fit_width = width < height
+    let fit_width = width * 4 < height * 3
     let aspect = width / height
     let ZOOM = fit_width ? designWidth : designHeight
     input.scale = ZOOM / (fit_width ? width : height)
@@ -1032,20 +1050,18 @@ var sendUpdateTransform = function (list) {
     for (let i of list) {
         transformBuffer.set(i.toArray(), offset)
         offset += SEGMENT
+
+        i.onDirty()
     }
 
     globalThis.updateTransforms(transformBuffer)
 }
 
-var t = 0
-
 var checkInput = function (list) {
-    let state = input.state
-    let prevState = input.prevState
+    let { state, prevState, scale, x, y } = input
 
     input.stack = state == prevState ? (input.stack + 1) : 0
     input.prevState = input.state
-
 
     if (state == 3 && prevState == 3) return // no input
 
@@ -1053,8 +1069,8 @@ var checkInput = function (list) {
     let isTap = state == 0 && prevState != 0
     // let isClick = state == 3 && prevState == 0
 
-    let x = input.x * input.scale
-    let y = input.y * input.scale
+    x *= scale
+    y *= scale
 
     if (isTap) {
         input.prevX = x
@@ -1075,7 +1091,6 @@ var checkInput = function (list) {
 var update = function (dt) {
     let a = [root]
     let interactables = []
-    t += dt
 
     let id = 0
     while (id < a.length) {
@@ -1084,9 +1099,12 @@ var update = function (dt) {
             if (!i.active) continue
 
             for (let c of i.components) {
-                c.enabled && c.update && c.update(dt)
-                c.enabled &&
-                    ((c instanceof Button) || (c instanceof Toggle) || (c instanceof ScrollView)) &&
+                if (!c.enabled) continue
+                c.update && c.update(dt)
+
+                if ((c instanceof Button)
+                    || (c instanceof Toggle)
+                    || (c instanceof ScrollView))
                     interactables.push(c)
             }
 
@@ -1094,26 +1112,8 @@ var update = function (dt) {
         }
     }
 
-    // let target0 = root.children[2].children[0]
-    // target0.rotation.z += .01
-    for (let i = 2; i < 4; i++) {
-        let progressBar = root.children[i].getComponent(ProgressBar)
-        let c = progressBar.get() + dt
-        progressBar.set(c - Math.floor(c))
-    }
-
-    // globalThis.log(root.children.length)
-    let radial = root.children[6].getComponent(SpriteRadial)
-    radial.setAngle(t % (Math.PI * 2))
-    radial.onBoundUpdated(radial.node.getComponent(BoundBox2D))
-
-    // a.push(target0)
     a = a.filter(i => { return i.isDirty })
     a.length > 0 && sendUpdateTransform(a)
 
     checkInput(interactables)
-
-    for (let i of a) i.isDirty = false
 }
-
-init()

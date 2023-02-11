@@ -6,7 +6,7 @@ plugins {
 android {
     namespace 'com.example.helloaar'
     compileSdk 31
-    ndkVersion '24.0.8215888'
+    ndkVersion '25.2.9519653'
 
 //    aaptOptions {
 //        noCompress 'ktx2', 'js'
