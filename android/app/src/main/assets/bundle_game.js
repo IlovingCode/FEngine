@@ -53,8 +53,6 @@ class Game extends Component {
     }
 
     update(dt) {
-        globalThis.log('dt:', dt)
-
         this.timer += dt
 
         for (let i = 2; i < 4; i++) {

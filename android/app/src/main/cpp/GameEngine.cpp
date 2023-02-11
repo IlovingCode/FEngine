@@ -133,14 +133,14 @@ JSCALLBACK(createEntity){
 math::float3 eulerAngles(math::quatf q) {
     math::quatf nq = normalize(q);
     return math::float3 {
-            // roll (x-axis rotation)
-            (atan2(2.0f * (nq.y * nq.z + nq.w * nq.x),
-                nq.w * nq.w - nq.x * nq.x - nq.y * nq.y + nq.z * nq.z)),
-            // pitch (y-axis rotation)
-            (asin(-2.0f * (nq.x * nq.z - nq.w * nq.y))),
-            // yaw (z-axis rotation)
-            (atan2(2.0f * (nq.x * nq.y + nq.w * nq.z),
-                nq.w * nq.w + nq.x * nq.x - nq.y * nq.y - nq.z * nq.z))
+        // roll (x-axis rotation)
+        (atan2(2.0f * (nq.y * nq.z + nq.w * nq.x),
+            nq.w * nq.w - nq.x * nq.x - nq.y * nq.y + nq.z * nq.z)),
+        // pitch (y-axis rotation)
+        (asin(-2.0f * (nq.x * nq.z - nq.w * nq.y))),
+        // yaw (z-axis rotation)
+        (atan2(2.0f * (nq.x * nq.y + nq.w * nq.z),
+            nq.w * nq.w + nq.x * nq.x - nq.y * nq.y - nq.z * nq.z))
     };
 }
 
