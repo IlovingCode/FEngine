@@ -1,5 +1,16 @@
 ## User settings
-xcuserdata/
-/generated/
-Pods/
+xcuserdata
+generated
+Pods
 
+.idea
+build
+captures
+.cxx
+.gradle
+
+*.iml
+local.properties
+
+Podfile.lock
+.DS_Store

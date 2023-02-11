@@ -1,0 +1,49 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.example.helloaar'
+    compileSdk 31
+    ndkVersion '24.0.8215888'
+
+//    aaptOptions {
+//        noCompress 'ktx2', 'js'
+//    }
+
+    defaultConfig {
+        applicationId "com.example.helloaar"
+        minSdk 21
+        targetSdk 31
+        versionCode 1
+        versionName "1.0"
+        ndk.abiFilters 'arm64-v8a'
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_shared'
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            version '3.18.1'
+            path 'src/main/cpp/CMakeLists.txt'
+        }
+    }
+}
+
+dependencies {
+//    implementation 'org.webkit:android-jsc:r174650'
+//    implementation 'com.google.android.filament:filament-android:1.25.3'
+
+}
