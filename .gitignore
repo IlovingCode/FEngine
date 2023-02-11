@@ -2,6 +2,7 @@
 xcuserdata
 generated
 Pods
+.vscode
 
 .idea
 build
