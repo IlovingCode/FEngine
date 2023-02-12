@@ -294,7 +294,6 @@ JSCALLBACK(updateMaterial) {
 //        uint8_t priority = JSValueToNumber(ctx, arguments[2], nullptr);
         
         rm.setLayerMask(instance, 0xff, isVisible ? 0xff : 0x00);
-//        rm.setPriority(instance, priority);
     } else {
         JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
         void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
@@ -494,12 +493,17 @@ JSCALLBACK(addText) {
         .build(*engine);
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, vc * 4, nullptr));
 
+    uint8_t maskValue = JSValueToNumber(ctx, arguments[3], nullptr);
     auto matInstance = mat->createInstance();
     
     array = JSValueToObject(ctx, arguments[2], nullptr);
     void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     Texture* texture = static_cast<Texture*>(data);
     matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+    matInstance->setDepthWrite(false);
+    matInstance->setDepthCulling(false);
+    matInstance->setStencilCompareFunction(MaterialInstance::StencilCompareFunc::LE);
+    matInstance->setStencilReferenceValue(maskValue);
 
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
@@ -558,13 +562,23 @@ JSCALLBACK(addRenderer){
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(VERTICES, count * 4, nullptr));
 
     bool isMask = JSValueToBoolean(ctx, arguments[3]);
+    uint8_t maskValue = JSValueToNumber(ctx, arguments[4], nullptr);
     auto matInstance = (isMask ? mask : mat)->createInstance();
 
     array = JSValueToObject(ctx, arguments[2], nullptr);
     void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     Texture* texture = static_cast<Texture*>(data);
     matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
-
+    matInstance->setDepthWrite(false);
+    matInstance->setDepthCulling(false);
+    matInstance->setStencilReferenceValue(maskValue);
+    if(isMask) {
+        matInstance->setStencilOpDepthStencilPass(MaterialInstance::StencilOperation::REPLACE);
+        matInstance->setStencilWrite(true);
+    } else {
+        matInstance->setStencilCompareFunction(MaterialInstance::StencilCompareFunc::LE);
+    }
+    
     int offset = 0;
     if(count > 64) {
         offset = 54;
@@ -622,7 +636,8 @@ JSCALLBACK(addCamera){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
     
-    view->setPostProcessingEnabled(false);
+    view->setPostProcessingEnabled(true);
+    view->setStencilBufferEnabled(true);
     Camera* camera = engine->createCamera(entity);
     view->setCamera(camera);
     

@@ -1,15 +1,15 @@
 // test
 
 class Vec4 {
-    x = 0; y = 0; z = 0; w = 0
+    // x = 0; y = 0; z = 0; w = 1
 
-    constructor(x, y, z, w) { this.set(x, y, z, w) }
+    constructor(x, y, z, w = 1) { this.set(x, y, z, w) }
 
     set(x, y, z, w) {
         this.x = x
         this.y = y
         this.z = z
-        this.w = w
+        this.w = w ?? this.w
     }
 
     copy(target) { this.set(target.x, target.y, target.z, target.w) }
@@ -21,14 +21,14 @@ class Vec4 {
 }
 
 class Vec3 {
-    x = 0; y = 0; z = 0
+    // x = 0; y = 0; z = 0
 
-    constructor(x, y, z) { this.set(x, y, z) }
+    constructor(x, y, z = 0) { this.set(x, y, z) }
 
     set(x, y, z) {
         this.x = x
         this.y = y
-        this.z = z
+        this.z = z ?? this.z
     }
 
     copy(target) { this.set(target.x, target.y, target.z) }
@@ -40,7 +40,7 @@ class Vec3 {
 }
 
 class Vec2 {
-    x = 0; y = 0
+    // x = 0; y = 0
 
     constructor(x, y) { this.set(x, y) }
 
@@ -60,7 +60,7 @@ class Vec2 {
 class Node {
     worldPosition = new Vec3(0, 0, 0)
 
-    position = new Vec3(0, 0, .1)
+    position = new Vec3(0, 0, .01)
     rotation = new Vec3(0, 0, 0)
     scale = new Vec3(1, 1, 1)
     parent = null
@@ -394,7 +394,17 @@ class TextSimple extends Component {
 
         this.vb = new Float32Array(max * 16)
 
-        this.native = globalThis.addText(this.node.id(), this.vb, this.font.native)
+        let maskId = 0
+        let parent = node.parent
+        while (parent) {
+            let sprite = parent.getComponent(SpriteSimple)
+            if (sprite) {
+                maskId = sprite.maskId
+                break
+            } else parent = parent.parent
+        }
+
+        this.native = globalThis.addText(this.node.id(), this.vb, this.font.native, maskId)
     }
 
     setColor(r, g, b, a) {
@@ -491,8 +501,9 @@ class TextSimple extends Component {
 }
 
 class SpriteSimple extends Component {
-    vb = null
-    native = null
+    // vb = null
+    // native = null
+    // maskId = 0
 
     constructor(node, image, isMask = false) {
         super(node)
@@ -505,8 +516,21 @@ class SpriteSimple extends Component {
 
         bound.onBoundChanged = this.onBoundUpdated.bind(this)
 
+        let maskId = 0
+        let parent = node.parent
+        while (parent) {
+            let sprite = parent.getComponent(SpriteSimple)
+            if (sprite) {
+                maskId = sprite.maskId
+                break
+            } else parent = parent.parent
+        }
+
+        if(isMask) maskId++
+
+        this.maskId = maskId
         this.vb = this.createData(image)
-        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native, isMask)
+        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native, isMask, maskId)
     }
 
     onBoundUpdated(bound) {
@@ -918,7 +942,7 @@ class Layout extends Component {
 
             tx = t + spaceX
 
-            i.position.set(x, y, i.position.z)
+            i.position.set(x, y)
             i.isDirty = true
         }
 
@@ -962,12 +986,7 @@ class ProgressCircle extends Component {
     constructor(node) {
         super(node)
         this.background = node.getComponent(BoundBox2D)
-
         let fill = node.children[0].getComponent(BoundBox2D)
-        // fill.pivot.set(.5, .5)
-        // fill.setAlignment(0, 0, 0, 0, 0, 0)
-        // fill.node.position.set(0, 0, 0)
-        // fill.node.isDirty = true
 
         this.fill = fill
     }

@@ -61,14 +61,14 @@ class Game extends Component {
             progressBar.set(c - Math.floor(c))
         }
 
-        // globalThis.log(root.children.length)
+        // globalThis.log(dt)
         let radial = root.children[6].getComponent(SpriteRadial)
         radial.setAngle(this.timer % (Math.PI * 2))
         radial.onBoundUpdated(radial.node.getComponent(BoundBox2D))
     }
 }
 
-var init = function () {
+void function init() {
     beginScene()
 
     for (let i in textures) {
@@ -81,9 +81,9 @@ var init = function () {
     new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
     let node = root.addChild()
-    node.position.z = 0
-    new SpriteSimple(node, textures.tiny, true)
-    node.getComponent(BoundBox2D).setSize(2000, 2000)
+    // node.position.z = 0
+    // new SpriteSimple(node, textures.tiny, true)
+    // node.getComponent(BoundBox2D).setSize(2000, 2000)
     new Game(node)
 
     node = root.addChild()
@@ -117,12 +117,11 @@ var init = function () {
     new Toggle(node)
 
     node = root.addChild()
-    new SpriteSimple(node, textures.tiny).setEnable(false)
+    new SpriteSimple(node, textures.tiny)
     node.getComponent(BoundBox2D).setSize(300, 300)
     node.getComponent(BoundBox2D).setAlignment(0, -1, 0, 0, 10, 0)
 
     node = node.addChild()
-    node.position.z = -.5
     new SpriteSimple(node, textures.tiny, true)
     node.getComponent(BoundBox2D).setSize(250, 250)
     let scrollView = new ScrollView(node)
@@ -143,22 +142,22 @@ var init = function () {
         new Button(child)
 
         let child1 = child.addChild()
-        child1.position.set(0, 10, .1)
+        child1.position.set(0, 10)
         new TextSimple(child1, font, 20, .5, 3).setText((i + 1).toString())
 
         child1 = child.addChild()
-        child1.position.set(0, -10, .1)
+        child1.position.set(0, -10)
         let id = i % (content.length - 3)
         new TextSimple(child1, font, 25, .5, 3).setText(content.substring(id, id + 3))
     }
 
     node = root.addChild()
-    node.position.set(0, 250, .1)
+    node.position.set(0, 250)
     new SpriteRadial(node, textures.red)
     node.getComponent(BoundBox2D).setSize(50, 50)
 
     node = root.addChild()
-    node.position.set(0, -300, .1)
+    node.position.set(0, -300)
     let str = `This is simple text.\n Merry Christmas!! Happy New Year!!`
     let text = new TextSimple(node, font, 40, 0, str.length)
     text.setText(str)
@@ -170,6 +169,4 @@ var init = function () {
     new SpriteSimple(node, font)
     node.getComponent(BoundBox2D).setSize(300, 300)
     node.getComponent(BoundBox2D).setAlignment(0, 1, 0, 0, 0, 10)
-}
-
-init();
+}();
