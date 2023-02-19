@@ -65,6 +65,9 @@ class Game extends Component {
         let radial = root.children[6].getComponent(SpriteRadial)
         radial.setAngle(this.timer % (Math.PI * 2))
         radial.onBoundUpdated(radial.node.getComponent(BoundBox2D))
+
+        let text = root.children[8].getComponent(TextSimple)
+        text.setText(Math.floor(this.timer).toString())
     }
 }
 
@@ -164,6 +167,12 @@ void function init() {
     text.setColor(1, 0, 0, 1)
 
     new Button(node)
+
+    node = root.addChild()
+    node.position.set(0, -400)
+    text = new TextSimple(node, font, 40, 0, 9)
+    text.setText('0')
+    text.setColor(1, 1, 0, 1)
 
     node = root.addChild()
     new SpriteSimple(node, font)

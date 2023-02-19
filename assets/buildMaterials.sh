@@ -6,8 +6,8 @@
 ./matc -p mobile -a metal -f header -o "../android/app/src/main/cpp/bakedText_ios.inc" "./bakedText.mat"
 ./matc -p mobile -a metal -f header -o "../android/app/src/main/cpp/bakedMask_ios.inc" "./bakedMask.mat"
 
-./mipgen -f ktx2 --compression=uastc -m 1 tiny.png            "../android/app/src/main/assets/tiny.ktx2"
-./mipgen -f ktx2 --compression=uastc -m 1 red.png             "../android/app/src/main/assets/red.ktx2"
+# ./mipgen -f ktx2 --compression=uastc -m 1 tiny.png            "../android/app/src/main/assets/tiny.ktx2"
+# ./mipgen -f ktx2 --compression=uastc -m 1 red.png             "../android/app/src/main/assets/red.ktx2"
 
-./mipgen -f ktx2 --compression=uastc -m 1 progress_fill.png   "../android/app/src/main/assets/progress_fill.ktx2"
-./mipgen -f ktx2 --compression=uastc -m 1 progress_bg.png     "../android/app/src/main/assets/progress_bg.ktx2"
+# ./mipgen -f ktx2 --compression=uastc -m 1 progress_fill.png   "../android/app/src/main/assets/progress_fill.ktx2"
+# ./mipgen -f ktx2 --compression=uastc -m 1 progress_bg.png     "../android/app/src/main/assets/progress_bg.ktx2"

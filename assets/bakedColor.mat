@@ -13,7 +13,7 @@ material {
     blending : transparent,
     colorWrite : true,
     depthWrite : false,
-    depthCulling : true,
+    depthCulling : false,
     culling : none
 }
 

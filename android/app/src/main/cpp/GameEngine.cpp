@@ -32,6 +32,7 @@
 #include <filament/TransformManager.h>
 #include <filament/TextureSampler.h>
 #include <filament/Texture.h>
+#include <filament/ColorGrading.h>
 
 #include <utils/Entity.h>
 #include <utils/Path.h>
@@ -113,7 +114,7 @@ JSCALLBACK(beginScene){
     Scene* scene = engine->createScene();
     view->setScene(scene);
     
-    return nullptr;
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, scene, sizeof(scene), nullptr, nullptr, nullptr);
 }
 
 JSCALLBACK(createEntity){
@@ -291,9 +292,9 @@ JSCALLBACK(updateMaterial) {
         material->setParameter("baseColor", RgbaType::LINEAR, math::float4{red, green, blue, alpha});
     } else if (argumentCount > 2) {
         bool isVisible = JSValueToBoolean(ctx, arguments[1]);
-//        uint8_t priority = JSValueToNumber(ctx, arguments[2], nullptr);
+        uint8_t mask = JSValueToNumber(ctx, arguments[2], nullptr);
         
-        rm.setLayerMask(instance, 0xff, isVisible ? 0xff : 0x00);
+        rm.setLayerMask(instance, mask, isVisible ? mask : 0x0);
     } else {
         JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
         void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
@@ -500,8 +501,8 @@ JSCALLBACK(addText) {
     void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     Texture* texture = static_cast<Texture*>(data);
     matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
-    matInstance->setDepthWrite(false);
-    matInstance->setDepthCulling(false);
+//    matInstance->setDepthWrite(false);
+//    matInstance->setDepthCulling(false);
     matInstance->setStencilCompareFunction(MaterialInstance::StencilCompareFunc::LE);
     matInstance->setStencilReferenceValue(maskValue);
 
@@ -569,8 +570,8 @@ JSCALLBACK(addRenderer){
     void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     Texture* texture = static_cast<Texture*>(data);
     matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
-    matInstance->setDepthWrite(false);
-    matInstance->setDepthCulling(false);
+//    matInstance->setDepthWrite(false);
+//    matInstance->setDepthCulling(false);
     matInstance->setStencilReferenceValue(maskValue);
     if(isMask) {
         matInstance->setStencilOpDepthStencilPass(MaterialInstance::StencilOperation::REPLACE);
@@ -638,9 +639,19 @@ JSCALLBACK(addCamera){
     
     view->setPostProcessingEnabled(true);
     view->setStencilBufferEnabled(true);
+    
+    view->setAntiAliasing(AntiAliasing::NONE);
+    view->setDithering(Dithering::NONE);
+    view->setScreenSpaceRefractionEnabled(false);
+    view->setShadowingEnabled(false);
+    view->setBlendMode(BlendMode::TRANSLUCENT);
+//    auto cg = ColorGrading::Builder()
+//        .contrast(1.f)
+//        .build(*engine);
+//    view->setColorGrading(cg);
+    
     Camera* camera = engine->createCamera(entity);
     view->setCamera(camera);
-    
     return arguments[0];
 }
 
@@ -705,7 +716,7 @@ void GameEngine::input(float x, float y, uint8_t state) {
     JSObjectSetProperty(globalContext, input, stateStr, JSValueMakeNumber(globalContext, state), kJSPropertyAttributeNone, nullptr);
 }
 
-GameEngine::GameEngine(void* nativeWindow){
+GameEngine::GameEngine(void* nativeWindow, double now){
     engine = Engine::create(
 #ifdef ANDROID
     Engine::Backend::OPENGL
@@ -716,6 +727,7 @@ GameEngine::GameEngine(void* nativeWindow){
     swapChain = engine->createSwapChain(nativeWindow);
     renderer = engine->createRenderer();
     view = engine->createView();
+    current_time = now;
     
     renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = true});
     

@@ -496,7 +496,7 @@ class TextSimple extends Component {
     }
 
     onEnableChanged(enabled) {
-        globalThis.updateMaterial(this.node.id(), enabled, 0)
+        globalThis.updateMaterial(this.node.id(), enabled, UI_LAYER)
     }
 }
 
@@ -539,7 +539,7 @@ class SpriteSimple extends Component {
     }
 
     onEnableChanged(enabled) {
-        globalThis.updateMaterial(this.node.id(), enabled, 0)
+        globalThis.updateMaterial(this.node.id(), enabled, UI_LAYER)
     }
 
     createData(image) {
@@ -1004,6 +1004,7 @@ class ProgressCircle extends Component {
 
 let root = new Node
 let camera = null
+const UI_LAYER = 0x1 << 7
 
 var buildFont = function (font) {
     let text = "QWERTYUIOPASDFGHJKLZXCVBNM1234567890qwertyuiopasdfghjklzxcvbnm!@#$%^&*()-=[];',./_+{}:\"<>?\\|`~ "
