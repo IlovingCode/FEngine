@@ -2,6 +2,8 @@
 const designWidth = 640
 const designHeight = 960
 
+const uiRoot = new Scene
+
 const textures = {
     tiny: {
         width: 2,
@@ -56,23 +58,22 @@ class Game extends Component {
         this.timer += dt
 
         for (let i = 2; i < 4; i++) {
-            let progressBar = root.children[i].getComponent(ProgressBar)
+            let progressBar = uiRoot.children[i].getComponent(ProgressBar)
             let c = progressBar.get() + dt
             progressBar.set(c - Math.floor(c))
         }
 
         // globalThis.log(dt)
-        let radial = root.children[6].getComponent(SpriteRadial)
+        let radial = uiRoot.children[6].getComponent(SpriteRadial)
         radial.setAngle(this.timer % (Math.PI * 2))
         radial.onBoundUpdated(radial.node.getComponent(BoundBox2D))
 
-        let text = root.children[8].getComponent(TextSimple)
+        let text = uiRoot.children[8].getComponent(TextSimple)
         text.setText(Math.floor(this.timer).toString())
     }
 }
 
 void function init() {
-    beginScene()
 
     for (let i in textures) {
         textures[i].native = loadImage(i + '.ktx2')
@@ -80,21 +81,20 @@ void function init() {
 
     buildFont(font)
 
-    root.position.z = 0
-    new BoundBox2D(root, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
+    new BoundBox2D(uiRoot, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
-    let node = root.addChild()
+    let node = uiRoot.addChild()
     // node.position.z = 0
     // new SpriteSimple(node, textures.tiny, true)
     // node.getComponent(BoundBox2D).setSize(2000, 2000)
     new Game(node)
 
-    node = root.addChild()
+    node = uiRoot.addChild()
     node.position.z = 1
-    camera = new Camera(node)
+    uiRoot.camera = new Camera(node)
 
     for (let i = 0; i < 2; i++) {
-        node = root.addChild()
+        node = uiRoot.addChild()
         new SpriteSliced(node, textures.progress_bg)
         node.getComponent(BoundBox2D).setSize(200, 28)
         node.getComponent(BoundBox2D).setAlignment(1, -1, 50 * (i + 1), 0, 30, 0)
@@ -108,7 +108,7 @@ void function init() {
         new Button(node)
     }
 
-    node = root.addChild()
+    node = uiRoot.addChild()
     new SpriteSliced(node, textures.progress_bg)
     node.getComponent(BoundBox2D).setSize(50, 28)
     node.getComponent(BoundBox2D).setAlignment(1, 1, 50, 0, 0, 50)
@@ -119,7 +119,7 @@ void function init() {
 
     new Toggle(node)
 
-    node = root.addChild()
+    node = uiRoot.addChild()
     new SpriteSimple(node, textures.tiny)
     node.getComponent(BoundBox2D).setSize(300, 300)
     node.getComponent(BoundBox2D).setAlignment(0, -1, 0, 0, 10, 0)
@@ -154,27 +154,28 @@ void function init() {
         new TextSimple(child1, font, 25, .5, 3).setText(content.substring(id, id + 3))
     }
 
-    node = root.addChild()
+    node = uiRoot.addChild()
     node.position.set(0, 250)
     new SpriteRadial(node, textures.red)
     node.getComponent(BoundBox2D).setSize(50, 50)
 
-    node = root.addChild()
+    node = uiRoot.addChild()
     node.position.set(0, -300)
     let str = `This is simple text.\n Merry Christmas!! Happy New Year!!`
     let text = new TextSimple(node, font, 40, 0, str.length)
     text.setText(str)
-    text.setColor(1, 0, 0, 1)
+    text.setColor(new Vec4(1, 0, 0, 1))
 
     new Button(node)
 
-    node = root.addChild()
+    node = uiRoot.addChild()
     node.position.set(0, -400)
     text = new TextSimple(node, font, 40, 0, 9)
     text.setText('0')
-    text.setColor(1, 1, 0, 1)
+    text.setColor(new Vec4(1, 1, 0, 1))
+    node.getComponent(BoundBox2D).setAlignment(-1, 0, 0, 50, 0, 0)
 
-    node = root.addChild()
+    node = uiRoot.addChild()
     new SpriteSimple(node, font)
     node.getComponent(BoundBox2D).setSize(300, 300)
     node.getComponent(BoundBox2D).setAlignment(0, 1, 0, 0, 0, 10)

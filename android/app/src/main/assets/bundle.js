@@ -72,7 +72,7 @@ class Node {
     active = true
     globalActive = true
 
-    constructor(id = -1) { this.native[0] = id }
+    constructor(id) { this.native[0] = id }
 
     id() { return this.native[0] }
 
@@ -92,12 +92,12 @@ class Node {
         for (let i of this.children) i.active && i.onActive(enabled)
     }
 
-    addChild(node) {
-        if (!node) {
-            let id = this.id()
-            id = id < 0 ? globalThis.createEntity() : globalThis.createEntity(id)
-            node = new Node(id)
-        }
+    addChild() {
+        let scene = this
+        while (scene.id() >= 0) scene = scene.parent
+
+        let id = globalThis.createEntity(scene.nativeScene, this.id())
+        let node = new Node(id)
 
         this.children.push(node)
         node.parent = this
@@ -179,6 +179,34 @@ class Camera extends Component {
 
         globalThis.addCamera(node.id())
     }
+}
+
+class Scene extends Node {
+    nativeScene = null
+    camera = null
+
+    constructor() {
+        super(-1)
+
+        this.nativeScene = globalThis.beginScene()
+    }
+
+    onResizeView(width, height) {
+        let fit_width = width * designHeight < height * designWidth
+        let aspect = width / height
+        let ZOOM = fit_width ? designWidth : designHeight
+        input.scale = ZOOM / (fit_width ? width : height)
+
+        width = fit_width ? ZOOM : Math.round(ZOOM * aspect)
+        height = fit_width ? Math.round(ZOOM / aspect) : ZOOM
+        globalThis.updateCamera(this.getCameraNative(), width, height)
+
+        let bound = this.getComponent(BoundBox2D)
+        bound.updateSize(width, height)
+        bound.alignChildren()
+    }
+
+    getCameraNative() { return this.camera.node.id() }
 }
 
 class BoundBox2D extends Component {
@@ -306,7 +334,7 @@ class BoundBox2D extends Component {
     alignChildren() {
         let children = this.node.children
         for (let i of children) {
-            i.getComponent(BoundBox2D).updateAlignment()
+            i.getComponent(BoundBox2D)?.updateAlignment()
         }
     }
 
@@ -368,6 +396,8 @@ class BoundBox2D extends Component {
     }
 }
 
+const UI_LAYER = 0x1
+
 class TextSimple extends Component {
     // vb = null
     // ib = null
@@ -407,8 +437,8 @@ class TextSimple extends Component {
         this.native = globalThis.addText(this.node.id(), this.vb, this.font.native, maskId)
     }
 
-    setColor(r, g, b, a) {
-        globalThis.updateMaterial(this.node.id(), r, g, b, a)
+    setColor(color) {
+        globalThis.updateMaterial(this.node.id(), color.x, color.y, color.z, color.w)
     }
 
     setText(text) {
@@ -526,7 +556,7 @@ class SpriteSimple extends Component {
             } else parent = parent.parent
         }
 
-        if(isMask) maskId++
+        if (isMask) maskId++
 
         this.maskId = maskId
         this.vb = this.createData(image)
@@ -769,7 +799,7 @@ class Button extends Component {
             if (state == 3) this.scale = 1
 
             return true
-        } else {
+        } else if (this.scale > 0) {
             this.scale = -1
         }
     }
@@ -784,7 +814,7 @@ class Button extends Component {
         if (Math.abs(s0 - s1) < .01) {
             s1 = s0
             this.scale == 1 && this.onClick()
-            this.scale = 0
+            s0 == 1 && (this.scale = 0)
         }
 
         scale.x = s1
@@ -1002,10 +1032,6 @@ class ProgressCircle extends Component {
     get() { return this.value }
 }
 
-let root = new Node
-let camera = null
-const UI_LAYER = 0x1 << 7
-
 var buildFont = function (font) {
     let text = "QWERTYUIOPASDFGHJKLZXCVBNM1234567890qwertyuiopasdfghjklzxcvbnm!@#$%^&*()-=[];',./_+{}:\"<>?\\|`~ "
     let buffer = new Int16Array(text.length * 7 + 4)
@@ -1032,31 +1058,18 @@ var buildFont = function (font) {
     }
 }
 
+var transformBuffer = null
+var bufferLength = 0
 var input = {
     x: 0, y: 0,
     prevX: 0, prevY: 0,
     state: 3, prevState: 3,
-    stack: 0,
-    scale: 1
+    stack: 0, scale: 1
 }
 
 var resizeView = function (width, height) {
-    let fit_width = width * 4 < height * 3
-    let aspect = width / height
-    let ZOOM = fit_width ? designWidth : designHeight
-    input.scale = ZOOM / (fit_width ? width : height)
-
-    width = fit_width ? ZOOM : (ZOOM * aspect)
-    height = fit_width ? (ZOOM / aspect) : ZOOM
-    globalThis.updateCamera(camera.node.id(), width, height)
-
-    let bound = root.getComponent(BoundBox2D)
-    bound.updateSize(width, height)
-    bound.alignChildren()
+    uiRoot.onResizeView(width, height)
 }
-
-var transformBuffer = null
-var bufferLength = 0
 
 var sendUpdateTransform = function (list) {
     const SEGMENT = 10
@@ -1109,7 +1122,7 @@ var checkInput = function (list) {
 }
 
 var update = function (dt) {
-    let a = [root]
+    let a = [uiRoot]
     let interactables = []
 
     let id = 0
@@ -1136,4 +1149,6 @@ var update = function (dt) {
     a.length > 0 && sendUpdateTransform(a)
 
     checkInput(interactables)
+
+    globalThis.render(uiRoot.nativeScene, uiRoot.getCameraNative())
 }
