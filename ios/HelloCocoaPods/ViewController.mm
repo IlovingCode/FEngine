@@ -42,7 +42,7 @@
 //    NSString* path = [[NSBundle mainBundle] pathForResource:@"bundle" ofType:@"js"];
 //    NSString* content = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
     
-    _gameEngine = new GameEngine((__bridge void*) mtkView.layer);
+    _gameEngine = new GameEngine((__bridge void*) mtkView.layer, CACurrentMediaTime());
     // Give our View a starting size based on the drawable size.
     [self mtkView:mtkView drawableSizeWillChange:mtkView.drawableSize];
 }

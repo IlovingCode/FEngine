@@ -32,6 +32,7 @@
 #include <filament/TransformManager.h>
 #include <filament/TextureSampler.h>
 #include <filament/Texture.h>
+#include <filament/ColorGrading.h>
 
 #include <utils/Entity.h>
 #include <utils/Path.h>
@@ -111,17 +112,20 @@ JSCALLBACK(log){
 
 JSCALLBACK(beginScene){
     Scene* scene = engine->createScene();
-    view->setScene(scene);
     
-    return nullptr;
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, scene, sizeof(scene), nullptr, nullptr, nullptr);
 }
 
 JSCALLBACK(createEntity){
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Scene* scene = static_cast<Scene*>(data);
+    
     Entity e = EntityManager::get().create();
-    view->getScene()->addEntity(e);
+    scene->addEntity(e);
 
-    if(argumentCount > 0) {
-        uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    int32_t id = JSValueToNumber(ctx, arguments[1], nullptr);
+    if(id >= 0){
         auto& tcm = engine->getTransformManager();
         Entity parent = Entity::import(id);
         tcm.create(e, tcm.getInstance(parent));
@@ -291,9 +295,9 @@ JSCALLBACK(updateMaterial) {
         material->setParameter("baseColor", RgbaType::LINEAR, math::float4{red, green, blue, alpha});
     } else if (argumentCount > 2) {
         bool isVisible = JSValueToBoolean(ctx, arguments[1]);
-//        uint8_t priority = JSValueToNumber(ctx, arguments[2], nullptr);
+        uint8_t mask = JSValueToNumber(ctx, arguments[2], nullptr);
         
-        rm.setLayerMask(instance, 0xff, isVisible ? 0xff : 0x00);
+        rm.setLayerMask(instance, mask, isVisible ? mask : 0x0);
     } else {
         JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
         void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
@@ -500,8 +504,8 @@ JSCALLBACK(addText) {
     void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     Texture* texture = static_cast<Texture*>(data);
     matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
-    matInstance->setDepthWrite(false);
-    matInstance->setDepthCulling(false);
+//    matInstance->setDepthWrite(false);
+//    matInstance->setDepthCulling(false);
     matInstance->setStencilCompareFunction(MaterialInstance::StencilCompareFunc::LE);
     matInstance->setStencilReferenceValue(maskValue);
 
@@ -569,8 +573,8 @@ JSCALLBACK(addRenderer){
     void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     Texture* texture = static_cast<Texture*>(data);
     matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
-    matInstance->setDepthWrite(false);
-    matInstance->setDepthCulling(false);
+//    matInstance->setDepthWrite(false);
+//    matInstance->setDepthCulling(false);
     matInstance->setStencilReferenceValue(maskValue);
     if(isMask) {
         matInstance->setStencilOpDepthStencilPass(MaterialInstance::StencilOperation::REPLACE);
@@ -636,12 +640,8 @@ JSCALLBACK(addCamera){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
     
-    view->setPostProcessingEnabled(true);
-    view->setStencilBufferEnabled(true);
     Camera* camera = engine->createCamera(entity);
-    view->setCamera(camera);
-    
-    return arguments[0];
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, camera, sizeof(camera), nullptr, nullptr, nullptr);
 }
 
 JSCALLBACK(updateCamera){
@@ -650,19 +650,49 @@ JSCALLBACK(updateCamera){
     
     auto camera = engine->getCameraComponent(entity);
     
-    const double width = JSValueToNumber(ctx, arguments[1], nullptr);
-    const double height = JSValueToNumber(ctx, arguments[2], nullptr);
-    
-    const double right  =  width * .5;
-    const double top    =  height * .5;
-    const double left   = -right;
-    const double bottom = -top;
-    const double near   =  0.0;
-    const double far    =  2.0;
-    
-    camera->setProjection(Camera::Projection::ORTHO, left, right, bottom, top, near, far);
+    if(argumentCount == 3) {
+        const double width = JSValueToNumber(ctx, arguments[1], nullptr);
+        const double height = JSValueToNumber(ctx, arguments[2], nullptr);
+        
+        const double right  =  width * .5;
+        const double top    =  height * .5;
+        const double left   = -right;
+        const double bottom = -top;
+        const double near   =  0.0;
+        const double far    =  2.0;
+        
+        camera->setProjection(Camera::Projection::ORTHO, left, right, bottom, top, near, far);
+    } else {
+        const double fov = JSValueToNumber(ctx, arguments[1], nullptr);
+        const double aspect = JSValueToNumber(ctx, arguments[2], nullptr);
+        const double far = JSValueToNumber(ctx, arguments[3], nullptr);
+        
+        camera->setProjection(fov, aspect, .1, far);
+    }
     
     return arguments[0];
+}
+
+JSCALLBACK(render){
+    for(size_t i = 0; i < argumentCount - 1; i += 2) {
+        JSObjectRef array = JSValueToObject(ctx, arguments[i], nullptr);
+        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+        Scene* scene = static_cast<Scene*>(data);
+        
+        uint32_t id = JSValueToNumber(ctx, arguments[i + 1], nullptr);
+        Entity entity = Entity::import(id);
+        auto camera = engine->getCameraComponent(entity);
+        
+        view->setScene(scene);
+        view->setCamera(camera);
+        
+        if (renderer->beginFrame(swapChain)) {
+            renderer->render(view);
+            renderer->endFrame();
+        }
+    }
+    
+    return nullptr;
 }
 
 void registerNativeFunction(const char* name, JSObjectCallAsFunctionCallback callback, JSObjectRef thisObject){
@@ -705,7 +735,7 @@ void GameEngine::input(float x, float y, uint8_t state) {
     JSObjectSetProperty(globalContext, input, stateStr, JSValueMakeNumber(globalContext, state), kJSPropertyAttributeNone, nullptr);
 }
 
-GameEngine::GameEngine(void* nativeWindow){
+GameEngine::GameEngine(void* nativeWindow, double now){
     engine = Engine::create(
 #ifdef ANDROID
     Engine::Backend::OPENGL
@@ -716,6 +746,20 @@ GameEngine::GameEngine(void* nativeWindow){
     swapChain = engine->createSwapChain(nativeWindow);
     renderer = engine->createRenderer();
     view = engine->createView();
+    current_time = now;
+    
+    view->setPostProcessingEnabled(true);
+    view->setStencilBufferEnabled(true);
+    
+    view->setAntiAliasing(AntiAliasing::NONE);
+    view->setDithering(Dithering::NONE);
+    view->setScreenSpaceRefractionEnabled(false);
+    view->setShadowingEnabled(false);
+    view->setBlendMode(BlendMode::TRANSLUCENT);
+//    auto cg = ColorGrading::Builder()
+//        .contrast(1.f)
+//        .build(*engine);
+//    view->setColorGrading(cg);
     
     renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = true});
     
@@ -735,6 +779,7 @@ GameEngine::GameEngine(void* nativeWindow){
     registerNativeFunction("loadImage", loadImage, globalObject);
     registerNativeFunction("addText", addText, globalObject);
     registerNativeFunction("renderText", renderText, globalObject);
+    registerNativeFunction("render", render, globalObject);
     
 #ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);
@@ -767,13 +812,6 @@ GameEngine::GameEngine(void* nativeWindow){
     JSStringRelease(script);
 }
 
-void render(){
-    if (renderer->beginFrame(swapChain)) {
-        renderer->render(view);
-        renderer->endFrame();
-    }
-}
-
 void GameEngine::update(double now){
     JSValueRef dt = JSValueMakeNumber(globalContext, now - current_time);
     current_time = now;
@@ -788,8 +826,6 @@ void GameEngine::update(double now){
     JSValueRef exception = nullptr;
     JSObjectCallAsFunction(globalContext, updateLoop, nullptr, 1, &dt, &exception);
     if(exception) LOGI("Thien %s", JSValueToStdString(globalContext, exception).c_str());
-    
-    render();
 }
 
 void GameEngine::resize(uint16_t width, uint16_t height){
