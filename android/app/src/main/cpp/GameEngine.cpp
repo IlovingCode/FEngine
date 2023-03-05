@@ -65,11 +65,12 @@ SwapChain* swapChain;
 
 #ifdef ANDROID
 AAssetManager* assetManager;
+#else
+Path assets;
 #endif
 
 JSGlobalContextRef globalContext;
 double current_time;
-Path assets;
 
 GameEngine::~GameEngine(){
     engine->destroyCameraComponent(view->getCamera().getEntity());
@@ -785,21 +786,29 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);
     string source = string((const char *)AAsset_getBuffer(asset), AAsset_getLength(asset) - 1);
     AAsset_close(asset);
-
+    
     asset = AAssetManager_open(assetManager, "bundle_game.js", 0);
+    source += string((const char *)AAsset_getBuffer(asset), AAsset_getLength(asset) - 1);
+    AAsset_close(asset);
+
+    asset = AAssetManager_open(assetManager, "bundle_ui.js", 0);
     source += string((const char *)AAsset_getBuffer(asset), AAsset_getLength(asset) - 1);
     AAsset_close(asset);
 #else
     assets = Path::getCurrentExecutable().getParent() + "assets/";
+    ostringstream buffer;
     
     ifstream file(assets + "bundle.js");
-    ostringstream buffer;
     buffer << file.rdbuf();
     file.close();
-
+    
     ifstream file_game(assets + "bundle_game.js");
     buffer << file_game.rdbuf();
     file_game.close();
+
+    ifstream file_ui(assets + "bundle_ui.js");
+    buffer << file_ui.rdbuf();
+    file_ui.close();
 
     string source = buffer.str();
 #endif

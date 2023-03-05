@@ -207,6 +207,33 @@ class Scene extends Node {
     }
 
     getCameraNative() { return this.camera.node.id() }
+
+    update(dt, interactables) {
+        let a = [...this.children]
+
+        let id = 0
+        while (id < a.length) {
+            let node = a[id++]
+
+            for (let c of node.components) {
+                if (!c.enabled) continue
+                c.update && c.update(dt)
+
+                if (interactables
+                    || (c instanceof Button)
+                    || (c instanceof Toggle)
+                    || (c instanceof ScrollView))
+                    interactables.push(c)
+            }
+
+            for (let i of node.children) i.active && a.push(i)
+        }
+
+        a = a.filter(i => { return i.isDirty })
+        a.length > 0 && globalThis.sendUpdateTransform(a)
+
+        return interactables
+    }
 }
 
 class BoundBox2D extends Component {
@@ -926,10 +953,11 @@ class Layout extends Component {
         this.spaceY = spaceY
 
         let bound = node.getComponent(BoundBox2D)
-        bound.alignChildren = () => { }
 
         if (!bound) bound = new BoundBox2D(node, new Vec2(100, 100), new Vec2(.5, 1))
         else bound.setPivot(bound.pivot.x, 1)
+
+        bound.alignChildren = () => { }
     }
 
     forceUpdate() {
@@ -1122,33 +1150,9 @@ var checkInput = function (list) {
 }
 
 var update = function (dt) {
-    let a = [uiRoot]
-    let interactables = []
+    globalThis.checkInput(uiRoot.update(dt, []))
 
-    let id = 0
-    while (id < a.length) {
-        let children = a[id++].children
-        for (let i of children) {
-            if (!i.active) continue
-
-            for (let c of i.components) {
-                if (!c.enabled) continue
-                c.update && c.update(dt)
-
-                if ((c instanceof Button)
-                    || (c instanceof Toggle)
-                    || (c instanceof ScrollView))
-                    interactables.push(c)
-            }
-
-            a.push(i)
-        }
-    }
-
-    a = a.filter(i => { return i.isDirty })
-    a.length > 0 && sendUpdateTransform(a)
-
-    checkInput(interactables)
+    gameRoot.update(dt, null)
 
     globalThis.render(uiRoot.nativeScene, uiRoot.getCameraNative())
 }
