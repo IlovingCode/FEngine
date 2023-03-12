@@ -17,6 +17,7 @@
 #import "ViewController.h"
 
 #import <MetalKit/MTKView.h>
+#import <AVFAudio/AVFAudio.h>
 
 #import "GameEngine.hpp"
 
@@ -26,6 +27,15 @@
 
 @implementation ViewController {
     GameEngine* _gameEngine;
+    AVAudioPlayer* _audioPlayer;
+}
+
+// C "trampoline" function to invoke Objective-C method
+bool playNativeAudio(void *self, const char* parameter)
+{
+    // Call the Objective-C method using Objective-C syntax
+    NSString* name = [NSString stringWithUTF8String:parameter];
+    return [(__bridge id)self playAudio:name withExtension:@"wav"];
 }
 
 - (void)viewDidLoad {
@@ -43,12 +53,21 @@
 //    NSString* content = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
     
     _gameEngine = new GameEngine((__bridge void*) mtkView.layer, CACurrentMediaTime());
+    _gameEngine->setNativeHandle((__bridge void*) self);
     // Give our View a starting size based on the drawable size.
     [self mtkView:mtkView drawableSizeWillChange:mtkView.drawableSize];
+    _audioPlayer = [AVAudioPlayer alloc];
 }
 
 - (void)dealloc {
     delete _gameEngine;
+}
+
+- (BOOL) playAudio:(NSString*)name withExtension:(NSString*)extension{
+    NSURL* url = [[NSBundle mainBundle ] URLForResource:name withExtension:extension];
+    [[_audioPlayer initWithContentsOfURL:url error:NULL] play];
+    
+    return _audioPlayer.prepareToPlay;
 }
 
 - (void)mtkView:(nonnull MTKView*)view drawableSizeWillChange:(CGSize)size {

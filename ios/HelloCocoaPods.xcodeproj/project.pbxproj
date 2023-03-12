@@ -21,6 +21,7 @@
 		AEB37A6D2997AB45009539B0 /* bakedColor_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6A2997AB45009539B0 /* bakedColor_ios.inc */; };
 		AEB37A6E2997AB45009539B0 /* bakedText_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6B2997AB45009539B0 /* bakedText_ios.inc */; };
 		AEB37A6F2997AB45009539B0 /* bakedMask_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6C2997AB45009539B0 /* bakedMask_ios.inc */; };
+		AED07C8429B5268D003524B9 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AED07C8329B5268D003524B9 /* AVFAudio.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,12 +41,14 @@
 		9B0B8E3424AB80B4FB0F5FF1 /* Pods-HelloCocoaPods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.release.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.release.xcconfig"; sourceTree = "<group>"; };
 		AE1C45B029979318007B5933 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = ../../android/app/src/main/assets; sourceTree = "<group>"; };
 		AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		AEA316DB29BCCDF000000ECB /* Object_C_Interface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Object_C_Interface.h; sourceTree = "<group>"; };
 		AEB37A662997A4D0009539B0 /* stb_truetype.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = stb_truetype.h; path = ../../android/app/src/main/cpp/stb_truetype.h; sourceTree = "<group>"; };
 		AEB37A672997A561009539B0 /* GameEngine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = GameEngine.hpp; path = ../../android/app/src/main/cpp/GameEngine.hpp; sourceTree = "<group>"; };
 		AEB37A682997A561009539B0 /* GameEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = GameEngine.cpp; path = ../../android/app/src/main/cpp/GameEngine.cpp; sourceTree = "<group>"; };
 		AEB37A6A2997AB45009539B0 /* bakedColor_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedColor_ios.inc; path = ../../android/app/src/main/cpp/bakedColor_ios.inc; sourceTree = "<group>"; };
 		AEB37A6B2997AB45009539B0 /* bakedText_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedText_ios.inc; path = ../../android/app/src/main/cpp/bakedText_ios.inc; sourceTree = "<group>"; };
 		AEB37A6C2997AB45009539B0 /* bakedMask_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedMask_ios.inc; path = ../../android/app/src/main/cpp/bakedMask_ios.inc; sourceTree = "<group>"; };
+		AED07C8329B5268D003524B9 /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
 		D8F6B088AA46E901D4C80A53 /* libPods-HelloCocoaPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HelloCocoaPods.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DBDD44F53C2D94EF626D2238 /* Pods-HelloCocoaPods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.debug.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -55,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AED07C8429B5268D003524B9 /* AVFAudio.framework in Frameworks */,
 				AE1D8A2D284E98EA0031A866 /* JavaScriptCore.framework in Frameworks */,
 				20551D7E31AE7D51EE5C49CB /* libPods-HelloCocoaPods.a in Frameworks */,
 			);
@@ -93,6 +97,7 @@
 				43C0903924B7DCE8009D291E /* AppDelegate.m */,
 				43C0903C24B7DCE8009D291E /* SceneDelegate.m */,
 				43C0903E24B7DCE8009D291E /* ViewController.h */,
+				AEA316DB29BCCDF000000ECB /* Object_C_Interface.h */,
 				43C0903F24B7DCE8009D291E /* ViewController.mm */,
 				AEB37A682997A561009539B0 /* GameEngine.cpp */,
 				AEB37A672997A561009539B0 /* GameEngine.hpp */,
@@ -109,6 +114,7 @@
 		66545F4C91B73CA97ED2371B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				AED07C8329B5268D003524B9 /* AVFAudio.framework */,
 				AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */,
 				43C0905124B7DF20009D291E /* MetalKit.framework */,
 				D8F6B088AA46E901D4C80A53 /* libPods-HelloCocoaPods.a */,

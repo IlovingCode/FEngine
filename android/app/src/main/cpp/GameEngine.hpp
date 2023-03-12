@@ -19,6 +19,7 @@
 class GameEngine {
 public:
     GameEngine(void* nativeWindow, double now);
+    void setNativeHandle(void* handle);
     void update(double now);
     void resize(uint16_t width, uint16_t height);
     void input(float x, float y, uint8_t state);

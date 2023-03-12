@@ -39,6 +39,7 @@
 #include <utils/EntityManager.h>
 
 #include <gltfio/math.h>
+#include "Object_C_Interface.h"
 
 #include <JavaScriptCore/JavaScript.h>
 #ifdef ANDROID
@@ -62,6 +63,7 @@ Engine* engine;
 Renderer* renderer;
 View* view;
 SwapChain* swapChain;
+void *nativeHandle;
 
 #ifdef ANDROID
 AAssetManager* assetManager;
@@ -73,11 +75,6 @@ JSGlobalContextRef globalContext;
 double current_time;
 
 GameEngine::~GameEngine(){
-    engine->destroyCameraComponent(view->getCamera().getEntity());
-    view->getScene()->forEach([](Entity e) {
-        engine->destroy(e);
-    });
-    engine->destroy(view->getScene());
     engine->destroy(view);
     engine->destroy(renderer);
     engine->destroy(swapChain);
@@ -115,6 +112,12 @@ JSCALLBACK(beginScene){
     Scene* scene = engine->createScene();
     
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, scene, sizeof(scene), nullptr, nullptr, nullptr);
+}
+
+JSCALLBACK(playSound) {
+    
+    
+    return nullptr;
 }
 
 JSCALLBACK(createEntity){
@@ -334,6 +337,13 @@ JSCALLBACK(updateMaterial) {
 //
 //    return arguments[0];
 //}
+
+JSCALLBACK(playAudio) {
+    string filename = JSValueToStdString(ctx, arguments[0]);
+    playNativeAudio(nativeHandle, filename.c_str());
+    
+    return arguments[0];
+}
 
 JSCALLBACK(renderText) {
     string filename = JSValueToStdString(ctx, arguments[0]);
@@ -736,6 +746,10 @@ void GameEngine::input(float x, float y, uint8_t state) {
     JSObjectSetProperty(globalContext, input, stateStr, JSValueMakeNumber(globalContext, state), kJSPropertyAttributeNone, nullptr);
 }
 
+void GameEngine::setNativeHandle(void *handle) {
+    nativeHandle = handle;
+}
+
 GameEngine::GameEngine(void* nativeWindow, double now){
     engine = Engine::create(
 #ifdef ANDROID
@@ -781,6 +795,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("addText", addText, globalObject);
     registerNativeFunction("renderText", renderText, globalObject);
     registerNativeFunction("render", render, globalObject);
+    registerNativeFunction("playAudio", playAudio, globalObject);
     
 #ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);

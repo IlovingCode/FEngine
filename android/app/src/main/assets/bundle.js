@@ -219,10 +219,10 @@ class Scene extends Node {
                 if (!c.enabled) continue
                 c.update && c.update(dt)
 
-                if (interactables
-                    || (c instanceof Button)
-                    || (c instanceof Toggle)
-                    || (c instanceof ScrollView))
+                if (interactables && (
+                    (c instanceof Button) ||
+                    (c instanceof Toggle) ||
+                    (c instanceof ScrollView)))
                     interactables.push(c)
             }
 
@@ -867,6 +867,8 @@ class Toggle extends Button {
     onClick() {
         this.isChecked = !this.isChecked
         this.checkmark.setActive(this.isChecked)
+
+        globalThis.playAudio('assets/snd_Explode')
     }
 }
 
