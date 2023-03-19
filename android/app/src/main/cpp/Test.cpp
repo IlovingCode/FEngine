@@ -36,14 +36,15 @@ jmethodID playAudio;
 extern "C" JNIEXPORT jint JNICALL
 Java_com_example_helloaar_MainActivity_onStart(JNIEnv *env, jobject thiz, jobject assetsMgr, jobject surface)
 {
-    assetManager = AAssetManager_fromJava(env, assetsMgr);
-    if(!gameEngine) gameEngine = new GameEngine(ANativeWindow_fromSurface(env, surface), 0);
-    else gameEngine->setNativeHandle(ANativeWindow_fromSurface(env, surface));
+    if(!gameEngine) {
+        assetManager = AAssetManager_fromJava(env, assetsMgr);
 
-    env->GetJavaVM(&jvm);
-    nativeHandle = env->NewGlobalRef(thiz);
-    jclass clazz = env->GetObjectClass(thiz);
-    playAudio = env->GetMethodID(clazz, "playAudio", "(Ljava/lang/String;)V");
+        gameEngine = new GameEngine(ANativeWindow_fromSurface(env, surface), 0);
+        env->GetJavaVM(&jvm);
+        nativeHandle = env->NewGlobalRef(thiz);
+        jclass clazz = env->GetObjectClass(thiz);
+        playAudio = env->GetMethodID(clazz, "playAudio", "(Ljava/lang/String;)V");
+    }else gameEngine->setNativeHandle(ANativeWindow_fromSurface(env, surface));
 
     return 0;
 }
