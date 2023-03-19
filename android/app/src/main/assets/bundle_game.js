@@ -19,6 +19,8 @@ void function init() {
     node.position.z = 1
     gameRoot.camera = new Camera(node)
 
-    
+    // node = gameRoot.addChild
+    // new SpriteSimple(node, textures.tiny)
+
 }();
 

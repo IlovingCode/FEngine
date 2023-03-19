@@ -81,7 +81,7 @@ void function init() {
 
     buildFont(font)
 
-    new BoundBox2D(uiRoot, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
+    let bound = new BoundBox2D(uiRoot, new Vec2(designWidth, designHeight), new Vec2(.5, .5))
 
     let node = uiRoot.addChild()
     // node.position.z = 0
@@ -95,42 +95,41 @@ void function init() {
 
     for (let i = 0; i < 2; i++) {
         node = uiRoot.addChild()
+        bound = new BoundBox2D(node, new Vec2(200, 28), new Vec2(.5, .5))
         new SpriteSliced(node, textures.progress_bg)
-        node.getComponent(BoundBox2D).setSize(200, 28)
-        node.getComponent(BoundBox2D).setAlignment(1, -1, 50 * (i + 1), 0, 30, 0)
+        bound.setAlignment(1, -1, 50 * (i + 1), 0, 30, 0)
 
         let child = node.addChild()
+        bound = new BoundBox2D(child, new Vec2(200, 28), new Vec2(.5, .5))
         new SpriteSliced(child, textures.progress_fill)
-        child.getComponent(BoundBox2D).setSize(200, 28)
 
         new ProgressBar(node).set(i * .2)
-
         new Button(node)
     }
 
     node = uiRoot.addChild()
+    bound = new BoundBox2D(node, new Vec2(50, 28), new Vec2(.5, .5))
     new SpriteSliced(node, textures.progress_bg)
-    node.getComponent(BoundBox2D).setSize(50, 28)
-    node.getComponent(BoundBox2D).setAlignment(1, 1, 50, 0, 0, 50)
+    bound.setAlignment(1, 1, 50, 0, 0, 50)
 
     let child = node.addChild()
+    bound = new BoundBox2D(child, new Vec2(50, 28), new Vec2(.5, .5))
     new SpriteSliced(child, textures.progress_fill)
-    child.getComponent(BoundBox2D).setSize(50, 28)
 
     new Toggle(node)
 
     node = uiRoot.addChild()
+    bound = new BoundBox2D(node, new Vec2(300, 300), new Vec2(.5, .5))
     new SpriteSimple(node, textures.tiny)
-    node.getComponent(BoundBox2D).setSize(300, 300)
-    node.getComponent(BoundBox2D).setAlignment(0, -1, 0, 0, 10, 0)
+    bound.setAlignment(0, -1, 0, 0, 10, 0)
 
     node = node.addChild()
+    bound = new BoundBox2D(node, new Vec2(250, 250), new Vec2(.5, .5))
     new SpriteSimple(node, textures.tiny, true)
-    node.getComponent(BoundBox2D).setSize(250, 250)
     let scrollView = new ScrollView(node)
 
     node = node.addChild()
-    new BoundBox2D(node, new Vec2(250, 100), new Vec2(.5, .5))
+    bound = new BoundBox2D(node, new Vec2(250, 100), new Vec2(.5, .5))
     new Layout(node, 10, 10, 10, 10, 10, 10)
 
     scrollView.setContent(node)
@@ -139,44 +138,46 @@ void function init() {
 
     for (let i = 0; i < 200; i++) {
         child = node.addChild()
-
+        bound = new BoundBox2D(child, new Vec2(50, 50), new Vec2(.5, .5))
         new SpriteSimple(child, textures.red)
-        child.getComponent(BoundBox2D).setSize(50, 50)
         new Button(child)
 
         let child1 = child.addChild()
         child1.position.set(0, 10)
+        bound = new BoundBox2D(child1, new Vec2(100, 100), new Vec2(.5, .5))
         new TextSimple(child1, font, 20, .5, 3).setText((i + 1).toString())
 
         child1 = child.addChild()
         child1.position.set(0, -10)
         let id = i % (content.length - 3)
+        bound = new BoundBox2D(child1, new Vec2(100, 100), new Vec2(.5, .5))
         new TextSimple(child1, font, 25, .5, 3).setText(content.substring(id, id + 3))
     }
 
     node = uiRoot.addChild()
     node.position.set(0, 250)
+    bound = new BoundBox2D(node, new Vec2(50, 50), new Vec2(.5, .5))
     new SpriteRadial(node, textures.red)
-    node.getComponent(BoundBox2D).setSize(50, 50)
 
     node = uiRoot.addChild()
     node.position.set(0, -300)
+    bound = new BoundBox2D(node, new Vec2(100, 100), new Vec2(.5, .5))
     let str = `This is simple text.\n Merry Christmas!! Happy New Year!!`
-    let text = new TextSimple(node, font, 40, 0, str.length)
-    text.setText(str)
-    text.setColor(new Vec4(1, 0, 0, 1))
-
+    new TextSimple(node, font, 40, 0, str.length)
+    .setText(str)
+    .setColor(new Vec4(1, 0, 0, 1))
     new Button(node)
 
     node = uiRoot.addChild()
     node.position.set(0, -400)
-    text = new TextSimple(node, font, 40, 0, 9)
-    text.setText('0')
-    text.setColor(new Vec4(1, 1, 0, 1))
-    node.getComponent(BoundBox2D).setAlignment(-1, 0, 0, 50, 0, 0)
+    bound = new BoundBox2D(node, new Vec2(100, 100), new Vec2(.5, .5))
+    new TextSimple(node, font, 40, 0, 9)
+    .setText('0')
+    .setColor(new Vec4(1, 1, 0, 1))
+    bound.setAlignment(-1, 0, 0, 50, 0, 0)
 
     node = uiRoot.addChild()
+    bound = new BoundBox2D(node, new Vec2(300, 300), new Vec2(.5, .5))
     new SpriteSimple(node, font)
-    node.getComponent(BoundBox2D).setSize(300, 300)
-    node.getComponent(BoundBox2D).setAlignment(0, 1, 0, 0, 0, 10)
+    bound.setAlignment(0, 1, 0, 0, 0, 10)
 }();

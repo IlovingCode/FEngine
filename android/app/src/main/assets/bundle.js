@@ -416,8 +416,7 @@ class TextSimple extends Component {
         let bound = node.getComponent(BoundBox2D)
         let width = size * 2
         let height = size
-        if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
-        else bound.setSize(width, height)
+        bound.setSize(width, height)
 
         bound.onBoundChanged = this.onBoundUpdated.bind(this)
 
@@ -443,10 +442,11 @@ class TextSimple extends Component {
 
     setColor(color) {
         globalThis.updateMaterial(this.node.id(), color.x, color.y, color.z, color.w)
+        return this
     }
 
     setText(text) {
-        if (this.string == text) return
+        if (this.string == text) return this
 
         let bound = this.node.getComponent(BoundBox2D)
 
@@ -522,6 +522,7 @@ class TextSimple extends Component {
         }
 
         this.native = globalThis.updateRenderer(this.native, vb, count, this.node.id())
+        return this
     }
 
     onBoundUpdated(bound) {
@@ -539,10 +540,7 @@ class SpriteSimple extends Component {
         super(node)
 
         let bound = node.getComponent(BoundBox2D)
-        let width = image.width
-        let height = image.height
-        if (!bound) bound = new BoundBox2D(node, new Vec2(width, height), new Vec2(.5, .5))
-        else bound.setSize(width, height)
+        // bound.setSize(image.width, image.height)
 
         bound.onBoundChanged = this.onBoundUpdated.bind(this)
 
@@ -906,10 +904,8 @@ class Layout extends Component {
         this.spaceY = spaceY
 
         let bound = node.getComponent(BoundBox2D)
-
-        if (!bound) bound = new BoundBox2D(node, new Vec2(100, 100), new Vec2(.5, 1))
-        else bound.setPivot(bound.pivot.x, 1)
-
+        bound.setPivot(bound.pivot.x, 1)
+        bound.onBoundChanged = this.forceUpdate.bind(this)
         bound.alignChildren = () => { }
     }
 
