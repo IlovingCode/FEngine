@@ -689,22 +689,21 @@ JSCALLBACK(updateCamera){
 }
 
 JSCALLBACK(render){
-    for(size_t i = 0; i < argumentCount - 1; i += 2) {
-        JSObjectRef array = JSValueToObject(ctx, arguments[i], nullptr);
-        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-        Scene* scene = static_cast<Scene*>(data);
-        
-        uint32_t id = JSValueToNumber(ctx, arguments[i + 1], nullptr);
-        Entity entity = Entity::import(id);
-        auto camera = engine->getCameraComponent(entity);
-        
-        view->setScene(scene);
-        view->setCamera(camera);
-        
-        if (renderer->beginFrame(swapChain)) {
+    if (renderer->beginFrame(swapChain)) {
+        for(size_t i = 0; i < argumentCount - 1; i += 2) {
+            JSObjectRef array = JSValueToObject(ctx, arguments[i], nullptr);
+            void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+            Scene* scene = static_cast<Scene*>(data);
+            
+            uint32_t id = JSValueToNumber(ctx, arguments[i + 1], nullptr);
+            Entity entity = Entity::import(id);
+            auto camera = engine->getCameraComponent(entity);
+            
+            view->setScene(scene);
+            view->setCamera(camera);
             renderer->render(view);
-            renderer->endFrame();
         }
+        renderer->endFrame();
     }
     
     return nullptr;

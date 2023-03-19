@@ -1098,6 +1098,6 @@ var update = function (dt) {
 
     gameRoot.update(dt, null)
 
-    globalThis.render(uiRoot.nativeScene, uiRoot.getCameraNative())
+    globalThis.render(gameRoot.nativeScene, gameRoot.getCameraNative(), uiRoot.nativeScene, uiRoot.getCameraNative())
 }
 
