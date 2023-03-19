@@ -41,7 +41,7 @@
 		9B0B8E3424AB80B4FB0F5FF1 /* Pods-HelloCocoaPods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.release.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.release.xcconfig"; sourceTree = "<group>"; };
 		AE1C45B029979318007B5933 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = ../../android/app/src/main/assets; sourceTree = "<group>"; };
 		AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		AEA316DB29BCCDF000000ECB /* Object_C_Interface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Object_C_Interface.h; sourceTree = "<group>"; };
+		AE27EE7E29C6D84000EC8F8A /* Object_C_Interface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Object_C_Interface.h; path = ../../android/app/src/main/cpp/Object_C_Interface.h; sourceTree = "<group>"; };
 		AEB37A662997A4D0009539B0 /* stb_truetype.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = stb_truetype.h; path = ../../android/app/src/main/cpp/stb_truetype.h; sourceTree = "<group>"; };
 		AEB37A672997A561009539B0 /* GameEngine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = GameEngine.hpp; path = ../../android/app/src/main/cpp/GameEngine.hpp; sourceTree = "<group>"; };
 		AEB37A682997A561009539B0 /* GameEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = GameEngine.cpp; path = ../../android/app/src/main/cpp/GameEngine.cpp; sourceTree = "<group>"; };
@@ -97,8 +97,8 @@
 				43C0903924B7DCE8009D291E /* AppDelegate.m */,
 				43C0903C24B7DCE8009D291E /* SceneDelegate.m */,
 				43C0903E24B7DCE8009D291E /* ViewController.h */,
-				AEA316DB29BCCDF000000ECB /* Object_C_Interface.h */,
 				43C0903F24B7DCE8009D291E /* ViewController.mm */,
+				AE27EE7E29C6D84000EC8F8A /* Object_C_Interface.h */,
 				AEB37A682997A561009539B0 /* GameEngine.cpp */,
 				AEB37A672997A561009539B0 /* GameEngine.hpp */,
 				AEB37A662997A4D0009539B0 /* stb_truetype.h */,

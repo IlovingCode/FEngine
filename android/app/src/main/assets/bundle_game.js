@@ -1,10 +1,10 @@
 const gameRoot = new Scene
 
 class GameController extends Component {
-    timer = 0
-
     constructor(node) {
         super(node)
+
+        this.timer = 0
     }
 
     update(dt) {
@@ -21,3 +21,4 @@ void function init() {
 
     
 }();
+

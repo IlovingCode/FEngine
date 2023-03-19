@@ -39,9 +39,9 @@
 #include <utils/EntityManager.h>
 
 #include <gltfio/math.h>
-#include "Object_C_Interface.h"
 
 #include <JavaScriptCore/JavaScript.h>
+#include "Object_C_Interface.h"
 #ifdef ANDROID
 #include <android/asset_manager.h>
 #else
@@ -63,10 +63,10 @@ Engine* engine;
 Renderer* renderer;
 View* view;
 SwapChain* swapChain;
-void *nativeHandle;
+void* nativeHandle;
 
 #ifdef ANDROID
-AAssetManager* assetManager;
+AAssetManager* assetManager = nullptr;
 #else
 Path assets;
 #endif
@@ -80,9 +80,9 @@ GameEngine::~GameEngine(){
     engine->destroy(swapChain);
     engine->destroy(&engine);
     
-    JSContextGroupRef contextGroup = JSContextGetGroup(globalContext);
+//    JSContextGroupRef contextGroup = JSContextGetGroup(globalContext);
     JSGlobalContextRelease(globalContext);
-    JSContextGroupRelease(contextGroup);
+//    JSContextGroupRelease(contextGroup);
 }
 
 string JSValueToStdString(JSContextRef context, JSValueRef jsValue) {
@@ -340,7 +340,11 @@ JSCALLBACK(updateMaterial) {
 
 JSCALLBACK(playAudio) {
     string filename = JSValueToStdString(ctx, arguments[0]);
+#ifdef ANDROID
     playNativeAudio(nativeHandle, filename.c_str());
+#else
+    playNativeAudio(nativeHandle, ("assets/" + filename).c_str());
+#endif
     
     return arguments[0];
 }
@@ -747,7 +751,16 @@ void GameEngine::input(float x, float y, uint8_t state) {
 }
 
 void GameEngine::setNativeHandle(void *handle) {
+#ifdef ANDROID
+    if(handle) swapChain = engine->createSwapChain(handle);
+    else {
+        engine->destroy(swapChain);
+        swapChain = nullptr;
+        engine->flushAndWait();
+    }
+#else
     nativeHandle = handle;
+#endif
 }
 
 GameEngine::GameEngine(void* nativeWindow, double now){
@@ -771,6 +784,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     view->setScreenSpaceRefractionEnabled(false);
     view->setShadowingEnabled(false);
     view->setBlendMode(BlendMode::TRANSLUCENT);
+    
 //    auto cg = ColorGrading::Builder()
 //        .contrast(1.f)
 //        .build(*engine);
@@ -801,7 +815,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);
     string source = string((const char *)AAsset_getBuffer(asset), AAsset_getLength(asset) - 1);
     AAsset_close(asset);
-    
+
     asset = AAssetManager_open(assetManager, "bundle_game.js", 0);
     source += string((const char *)AAsset_getBuffer(asset), AAsset_getLength(asset) - 1);
     AAsset_close(asset);

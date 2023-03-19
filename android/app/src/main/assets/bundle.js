@@ -1,47 +1,41 @@
 // test
 
 class Vec4 {
-    // x = 0; y = 0; z = 0; w = 1
-
     constructor(x, y, z, w = 1) { this.set(x, y, z, w) }
 
     set(x, y, z, w) {
         this.x = x
         this.y = y
         this.z = z
-        this.w = w ?? this.w
+        this.w = w == undefined ? this.w : w
     }
 
     copy(target) { this.set(target.x, target.y, target.z, target.w) }
 
     clone() { return new Vec4(this.x, this.y, this.z, this.w) }
-
-    static ONE = new Vec4(1, 1, 1, 1)
-    static ZERO = new Vec4(0, 0, 0, 0)
 }
 
-class Vec3 {
-    // x = 0; y = 0; z = 0
+Vec4.ONE = new Vec4(1, 1, 1, 1)
+Vec4.ZERO = new Vec4(0, 0, 0, 0)
 
+class Vec3 {
     constructor(x, y, z = 0) { this.set(x, y, z) }
 
     set(x, y, z) {
         this.x = x
         this.y = y
-        this.z = z ?? this.z
+        this.z = z == undefined ? this.z : z
     }
 
     copy(target) { this.set(target.x, target.y, target.z) }
 
     clone() { return new Vec3(this.x, this.y, this.z) }
-
-    static ONE = new Vec3(1, 1, 1)
-    static ZERO = new Vec3(0, 0, 0)
 }
 
-class Vec2 {
-    // x = 0; y = 0
+Vec3.ONE = new Vec3(1, 1, 1)
+Vec3.ZERO = new Vec3(0, 0, 0)
 
+class Vec2 {
     constructor(x, y) { this.set(x, y) }
 
     set(x, y) {
@@ -52,27 +46,28 @@ class Vec2 {
     copy(target) { this.set(target.x, target.y) }
 
     clone() { return new Vec2(this.x, this.y) }
-
-    static ONE = new Vec2(1, 1)
-    static ZERO = new Vec2(0, 0)
 }
 
+Vec2.ONE = new Vec2(1, 1)
+Vec2.ZERO = new Vec2(0, 0)
+
 class Node {
-    worldPosition = new Vec3(0, 0, 0)
+    constructor(id) {
+        this.native = new Float32Array(10)
+        this.native[0] = id
+        this.worldPosition = new Vec3(0, 0, 0)
 
-    position = new Vec3(0, 0, .01)
-    rotation = new Vec3(0, 0, 0)
-    scale = new Vec3(1, 1, 1)
-    parent = null
-    children = []
-    components = []
-    native = new Float32Array(10)
-    isDirty = true
-    isUpdated = false
-    active = true
-    globalActive = true
-
-    constructor(id) { this.native[0] = id }
+        this.position = new Vec3(0, 0, .01)
+        this.rotation = new Vec3(0, 0, 0)
+        this.scale = new Vec3(1, 1, 1)
+        this.parent = null
+        this.children = []
+        this.components = []
+        this.isDirty = true
+        this.isUpdated = false
+        this.active = true
+        this.globalActive = true
+    }
 
     id() { return this.native[0] }
 
@@ -135,7 +130,7 @@ class Node {
         return worldPos
     }
 
-    toArray = function () {
+    toArray() {
         let p = this.position
         let r = this.rotation
         let s = this.scale
@@ -156,9 +151,6 @@ class Node {
 }
 
 class Component {
-    // enabled = false
-    // node = null
-
     constructor(node) {
         this.node = node
         node.addComponent(this)
@@ -182,12 +174,10 @@ class Camera extends Component {
 }
 
 class Scene extends Node {
-    nativeScene = null
-    camera = null
-
     constructor() {
         super(-1)
 
+        this.camera = null
         this.nativeScene = globalThis.beginScene()
     }
 
@@ -237,25 +227,18 @@ class Scene extends Node {
 }
 
 class BoundBox2D extends Component {
-    // size = null
-    // pivot = null
-    onBoundChanged = null
-
-    horizontalAlign = 0
-    verticalAlign = 0
-
-    _top = 0
-    _bottom = 0
-    _left = 0
-    _right = 0
-
-    // top = 0
-    // bottom = 0
-    // left = 0
-    // right = 0
-
     constructor(node, size, pivot) {
         super(node)
+
+        this.onBoundChanged = null
+
+        this.horizontalAlign = 0
+        this.verticalAlign = 0
+
+        this._top = 0
+        this._bottom = 0
+        this._left = 0
+        this._right = 0
 
         this.size = size
         this.pivot = pivot
@@ -361,7 +344,8 @@ class BoundBox2D extends Component {
     alignChildren() {
         let children = this.node.children
         for (let i of children) {
-            i.getComponent(BoundBox2D)?.updateAlignment()
+            let bound = i.getComponent(BoundBox2D)
+            bound && bound.updateAlignment()
         }
     }
 
@@ -426,14 +410,6 @@ class BoundBox2D extends Component {
 const UI_LAYER = 0x1
 
 class TextSimple extends Component {
-    // vb = null
-    // ib = null
-    // native = null
-    // textAlign = 0
-    // font = null
-    // size = 20
-    string = null
-
     constructor(node, font, size, align = 0, max = 10) {
         super(node)
 
@@ -445,6 +421,7 @@ class TextSimple extends Component {
 
         bound.onBoundChanged = this.onBoundUpdated.bind(this)
 
+        this.string = null
         this.font = font
         this.size = size
         this.textAlign = align
@@ -558,10 +535,6 @@ class TextSimple extends Component {
 }
 
 class SpriteSimple extends Component {
-    // vb = null
-    // native = null
-    // maskId = 0
-
     constructor(node, image, isMask = false) {
         super(node)
 
@@ -636,13 +609,6 @@ class SpriteSimple extends Component {
 }
 
 class SpriteSliced extends SpriteSimple {
-    // constructor is called before the below assignment
-    // so we need to rem them
-    // top = 0
-    // bottom = 0
-    // left = 0
-    // right = 0
-
     createData(image) {
         this.top = image.top
         this.bottom = image.bottom
@@ -811,12 +777,10 @@ class SpriteRadial extends SpriteSimple {
 }
 
 class Button extends Component {
-    // target = null
-    scale = 0
-
     constructor(node) {
         super(node)
 
+        this.scale = 0
         this.target = node.getComponent(BoundBox2D)
     }
 
@@ -854,9 +818,6 @@ class Button extends Component {
 }
 
 class Toggle extends Button {
-    // checkmark = null
-    // isChecked = true
-
     constructor(node) {
         super(node)
 
@@ -868,22 +829,20 @@ class Toggle extends Button {
         this.isChecked = !this.isChecked
         this.checkmark.setActive(this.isChecked)
 
-        globalThis.playAudio('assets/snd_Explode')
+        globalThis.playAudio('snd_Explode.wav')
     }
 }
 
 class ScrollView extends Component {
-    // target = null
-    // content = null
-
-    deltaX = 0
-    deltaY = 0
-    scale = 0
-
     constructor(node) {
         super(node)
 
+        this.deltaX = 0
+        this.deltaY = 0
+        this.scale = 0
+
         this.target = node.getComponent(BoundBox2D)
+        this.content = null
         node.children.length && this.setContent(node.children[0])
     }
 
@@ -935,18 +894,10 @@ class ScrollView extends Component {
 }
 
 class Layout extends Component {
-    // left = 0
-    // right = 0
-    // top = 0
-    // bottom = 0
-    // spaceX = 0
-    // spaceY = 0
-
-    lastCount = 0
-
     constructor(node, left, right, top, bottom, spaceX, spaceY) {
         super(node)
 
+        this.lastCount = 0
         this.left = left
         this.right = right
         this.top = top
@@ -1011,10 +962,6 @@ class Layout extends Component {
 }
 
 class ProgressBar extends Component {
-    value = 0
-    background = null
-    fill = null
-
     constructor(node) {
         super(node)
         this.background = node.getComponent(BoundBox2D)
@@ -1039,16 +986,13 @@ class ProgressBar extends Component {
 }
 
 class ProgressCircle extends Component {
-    value = 1
-    background = null
-    fill = null
-
     constructor(node) {
         super(node)
         this.background = node.getComponent(BoundBox2D)
         let fill = node.children[0].getComponent(BoundBox2D)
 
         this.fill = fill
+        this.value = 1
     }
 
     set(value) {
@@ -1152,9 +1096,12 @@ var checkInput = function (list) {
 }
 
 var update = function (dt) {
+    if(dt > 1) dt = 0
+
     globalThis.checkInput(uiRoot.update(dt, []))
 
     gameRoot.update(dt, null)
 
     globalThis.render(uiRoot.nativeScene, uiRoot.getCameraNative())
 }
+

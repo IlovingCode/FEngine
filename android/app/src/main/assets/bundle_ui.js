@@ -48,10 +48,10 @@ const font = {
 }
 
 class UIController extends Component {
-    timer = 0
-
     constructor(node) {
         super(node)
+
+        this.timer = 0
     }
 
     update(dt) {

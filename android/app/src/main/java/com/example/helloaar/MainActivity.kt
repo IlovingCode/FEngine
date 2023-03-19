@@ -16,15 +16,19 @@
 package com.example.helloaar
 
 import android.app.Activity
+import android.content.res.AssetFileDescriptor
 import android.content.res.AssetManager
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.util.Log
 import android.view.*
 import android.view.Choreographer.FrameCallback
 import android.view.SurfaceHolder.Callback
-import android.view.ViewGroup.LayoutParams
+
 
 class MainActivity : Activity(), Callback, FrameCallback {
+    val mediaPlayers= Array(5) { MediaPlayer() }
+    val audioTracks = mutableMapOf<String, AssetFileDescriptor>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,11 +38,32 @@ class MainActivity : Activity(), Callback, FrameCallback {
          * function.
          */
 
-        var surfaceView = SurfaceView(this)
+        val surfaceView = SurfaceView(this)
         setContentView(surfaceView)
         surfaceView.setZOrderOnTop(true)
 
         surfaceView.holder.addCallback(this)
+    }
+
+    fun playAudio(name: String) {
+        val afd : AssetFileDescriptor
+        if(audioTracks.containsKey(name)) {
+            afd = audioTracks.getValue(name)
+        }else{
+            afd = assets.openFd(name)
+            audioTracks[name] = afd
+        }
+
+        for(i in mediaPlayers){
+            if(!i.isPlaying) {
+                i.reset()
+                i.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                i.prepare()
+                i.start()
+
+                return
+            }
+        }
     }
 
     /*
@@ -79,39 +104,36 @@ class MainActivity : Activity(), Callback, FrameCallback {
 
     override fun surfaceCreated(holder: SurfaceHolder) {
 //        TODO("Not yet implemented")
-
         onStart(assets, holder.surface)
-
         Choreographer.getInstance().postFrameCallback(this)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
 //        TODO("Not yet implemented")
-//        Log.i("Thien", "$width $height")
         onResize(width, height)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
 //        TODO("Not yet implemented")
+        Choreographer.getInstance().removeFrameCallback(this)
         onFinish()
     }
 
     override fun doFrame(frameTimeNanos: Long) {
 //        TODO("Not yet implemented")
-        Choreographer.getInstance().postFrameCallback(this)
-
         onUpdate(frameTimeNanos)
+        Choreographer.getInstance().postFrameCallback(this)
     }
 
-
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        Log.i("Thien", "${event.x} ${event.y}");
+//        Log.i("Thien", "${event.x} ${event.y}");
 
         onInput(event.x, event.y, when (event.action) {
             MotionEvent.ACTION_DOWN -> 0
             MotionEvent.ACTION_MOVE -> 1
             else -> 3
         })
+
         return true
     }
 }

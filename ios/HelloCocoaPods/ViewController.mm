@@ -27,15 +27,15 @@
 
 @implementation ViewController {
     GameEngine* _gameEngine;
-    AVAudioPlayer* _audioPlayer;
+    NSArray<AVAudioPlayer*>* _audioPlayers;
+    NSMutableDictionary<NSString*, NSData*>* _audioTrack;
 }
 
 // C "trampoline" function to invoke Objective-C method
 bool playNativeAudio(void *self, const char* parameter)
 {
     // Call the Objective-C method using Objective-C syntax
-    NSString* name = [NSString stringWithUTF8String:parameter];
-    return [(__bridge id)self playAudio:name withExtension:@"wav"];
+    return [(__bridge id)self playAudio:[NSString stringWithUTF8String:parameter]];
 }
 
 - (void)viewDidLoad {
@@ -56,18 +56,44 @@ bool playNativeAudio(void *self, const char* parameter)
     _gameEngine->setNativeHandle((__bridge void*) self);
     // Give our View a starting size based on the drawable size.
     [self mtkView:mtkView drawableSizeWillChange:mtkView.drawableSize];
-    _audioPlayer = [AVAudioPlayer alloc];
+    
+    
+    _audioPlayers = @[
+        [AVAudioPlayer alloc],
+        [AVAudioPlayer alloc],
+        [AVAudioPlayer alloc],
+        [AVAudioPlayer alloc],
+        [AVAudioPlayer alloc],
+    ];
+    
+    NSData* empty = [NSData alloc];
+    for(AVAudioPlayer* player in _audioPlayers) {
+        [[player initWithData:empty error:NULL] stop];
+    }
+    
+    _audioTrack = [[NSMutableDictionary<NSString*, NSData*> alloc] init];
 }
 
 - (void)dealloc {
     delete _gameEngine;
 }
 
-- (BOOL) playAudio:(NSString*)name withExtension:(NSString*)extension{
-    NSURL* url = [[NSBundle mainBundle ] URLForResource:name withExtension:extension];
-    [[_audioPlayer initWithContentsOfURL:url error:NULL] play];
+- (BOOL) playAudio:(NSString*)path{
+    NSData* data = _audioTrack[path];
+    if(!data) {
+        NSArray* components = [path componentsSeparatedByString:@"."];
+        NSURL* url = [[NSBundle mainBundle] URLForResource:components[0] withExtension:components[1]];
+        data = [[NSData alloc] initWithContentsOfURL:url];
+        _audioTrack[path] = data;
+    }
     
-    return _audioPlayer.prepareToPlay;
+    for(AVAudioPlayer* player in _audioPlayers)
+    {
+       // do stuff with object
+        if(!player.isPlaying) return [[player initWithData:data error:NULL] play];
+    }
+    
+    return false;
 }
 
 - (void)mtkView:(nonnull MTKView*)view drawableSizeWillChange:(CGSize)size {
