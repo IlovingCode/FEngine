@@ -41,6 +41,7 @@
 #include <gltfio/math.h>
 
 #include <JavaScriptCore/JavaScript.h>
+#include "Object_C_Interface.h"
 #ifdef ANDROID
 #include <android/asset_manager.h>
 #else
@@ -62,29 +63,26 @@ Engine* engine;
 Renderer* renderer;
 View* view;
 SwapChain* swapChain;
+void* nativeHandle;
 
 #ifdef ANDROID
-AAssetManager* assetManager;
+AAssetManager* assetManager = nullptr;
+#else
+Path assets;
 #endif
 
 JSGlobalContextRef globalContext;
 double current_time;
-Path assets;
 
 GameEngine::~GameEngine(){
-    engine->destroyCameraComponent(view->getCamera().getEntity());
-    view->getScene()->forEach([](Entity e) {
-        engine->destroy(e);
-    });
-    engine->destroy(view->getScene());
     engine->destroy(view);
     engine->destroy(renderer);
     engine->destroy(swapChain);
     engine->destroy(&engine);
     
-    JSContextGroupRef contextGroup = JSContextGetGroup(globalContext);
+//    JSContextGroupRef contextGroup = JSContextGetGroup(globalContext);
     JSGlobalContextRelease(globalContext);
-    JSContextGroupRelease(contextGroup);
+//    JSContextGroupRelease(contextGroup);
 }
 
 string JSValueToStdString(JSContextRef context, JSValueRef jsValue) {
@@ -114,6 +112,12 @@ JSCALLBACK(beginScene){
     Scene* scene = engine->createScene();
     
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, scene, sizeof(scene), nullptr, nullptr, nullptr);
+}
+
+JSCALLBACK(playSound) {
+    
+    
+    return nullptr;
 }
 
 JSCALLBACK(createEntity){
@@ -333,6 +337,17 @@ JSCALLBACK(updateMaterial) {
 //
 //    return arguments[0];
 //}
+
+JSCALLBACK(playAudio) {
+    string filename = JSValueToStdString(ctx, arguments[0]);
+#ifdef ANDROID
+    playNativeAudio(nativeHandle, filename.c_str());
+#else
+    playNativeAudio(nativeHandle, ("assets/" + filename).c_str());
+#endif
+    
+    return arguments[0];
+}
 
 JSCALLBACK(renderText) {
     string filename = JSValueToStdString(ctx, arguments[0]);
@@ -674,22 +689,21 @@ JSCALLBACK(updateCamera){
 }
 
 JSCALLBACK(render){
-    for(size_t i = 0; i < argumentCount - 1; i += 2) {
-        JSObjectRef array = JSValueToObject(ctx, arguments[i], nullptr);
-        void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-        Scene* scene = static_cast<Scene*>(data);
-        
-        uint32_t id = JSValueToNumber(ctx, arguments[i + 1], nullptr);
-        Entity entity = Entity::import(id);
-        auto camera = engine->getCameraComponent(entity);
-        
-        view->setScene(scene);
-        view->setCamera(camera);
-        
-        if (renderer->beginFrame(swapChain)) {
+    if (renderer->beginFrame(swapChain)) {
+        for(size_t i = 0; i < argumentCount - 1; i += 2) {
+            JSObjectRef array = JSValueToObject(ctx, arguments[i], nullptr);
+            void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+            Scene* scene = static_cast<Scene*>(data);
+            
+            uint32_t id = JSValueToNumber(ctx, arguments[i + 1], nullptr);
+            Entity entity = Entity::import(id);
+            auto camera = engine->getCameraComponent(entity);
+            
+            view->setScene(scene);
+            view->setCamera(camera);
             renderer->render(view);
-            renderer->endFrame();
         }
+        renderer->endFrame();
     }
     
     return nullptr;
@@ -735,6 +749,19 @@ void GameEngine::input(float x, float y, uint8_t state) {
     JSObjectSetProperty(globalContext, input, stateStr, JSValueMakeNumber(globalContext, state), kJSPropertyAttributeNone, nullptr);
 }
 
+void GameEngine::setNativeHandle(void *handle) {
+#ifdef ANDROID
+    if(handle) swapChain = engine->createSwapChain(handle);
+    else {
+        engine->destroy(swapChain);
+        swapChain = nullptr;
+        engine->flushAndWait();
+    }
+#else
+    nativeHandle = handle;
+#endif
+}
+
 GameEngine::GameEngine(void* nativeWindow, double now){
     engine = Engine::create(
 #ifdef ANDROID
@@ -756,6 +783,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     view->setScreenSpaceRefractionEnabled(false);
     view->setShadowingEnabled(false);
     view->setBlendMode(BlendMode::TRANSLUCENT);
+    
 //    auto cg = ColorGrading::Builder()
 //        .contrast(1.f)
 //        .build(*engine);
@@ -780,6 +808,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("addText", addText, globalObject);
     registerNativeFunction("renderText", renderText, globalObject);
     registerNativeFunction("render", render, globalObject);
+    registerNativeFunction("playAudio", playAudio, globalObject);
     
 #ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);
@@ -789,17 +818,25 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     asset = AAssetManager_open(assetManager, "bundle_game.js", 0);
     source += string((const char *)AAsset_getBuffer(asset), AAsset_getLength(asset) - 1);
     AAsset_close(asset);
+
+    asset = AAssetManager_open(assetManager, "bundle_ui.js", 0);
+    source += string((const char *)AAsset_getBuffer(asset), AAsset_getLength(asset) - 1);
+    AAsset_close(asset);
 #else
     assets = Path::getCurrentExecutable().getParent() + "assets/";
+    ostringstream buffer;
     
     ifstream file(assets + "bundle.js");
-    ostringstream buffer;
     buffer << file.rdbuf();
     file.close();
-
+    
     ifstream file_game(assets + "bundle_game.js");
     buffer << file_game.rdbuf();
     file_game.close();
+
+    ifstream file_ui(assets + "bundle_ui.js");
+    buffer << file_ui.rdbuf();
+    file_ui.close();
 
     string source = buffer.str();
 #endif

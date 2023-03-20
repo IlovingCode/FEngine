@@ -18,6 +18,7 @@
 #include <android/asset_manager_jni.h>
 #include <android/native_window_jni.h>
 #include "GameEngine.hpp"
+#include "Object_C_Interface.h"
 
 /* This is a trivial JNI example where we use a native method
  * to return a new VM String. See the corresponding Java source
@@ -27,13 +28,23 @@
  */
 
 extern AAssetManager* assetManager;
-GameEngine* gameEngine;
+extern void* nativeHandle;
+GameEngine* gameEngine = nullptr;
+JavaVM* jvm;
+jmethodID playAudio;
 
 extern "C" JNIEXPORT jint JNICALL
 Java_com_example_helloaar_MainActivity_onStart(JNIEnv *env, jobject thiz, jobject assetsMgr, jobject surface)
 {
-    assetManager = AAssetManager_fromJava(env, assetsMgr);
-    gameEngine = new GameEngine(ANativeWindow_fromSurface(env, surface));
+    if(!gameEngine) {
+        assetManager = AAssetManager_fromJava(env, assetsMgr);
+
+        gameEngine = new GameEngine(ANativeWindow_fromSurface(env, surface), 0);
+        env->GetJavaVM(&jvm);
+        nativeHandle = env->NewGlobalRef(thiz);
+        jclass clazz = env->GetObjectClass(thiz);
+        playAudio = env->GetMethodID(clazz, "playAudio", "(Ljava/lang/String;)V");
+    }else gameEngine->setNativeHandle(ANativeWindow_fromSurface(env, surface));
 
     return 0;
 }
@@ -65,7 +76,17 @@ Java_com_example_helloaar_MainActivity_onInput(JNIEnv *env, jobject thiz, jfloat
 extern "C" JNIEXPORT jint JNICALL
 Java_com_example_helloaar_MainActivity_onFinish(JNIEnv *env, jobject thiz)
 {
-    delete gameEngine;
+    gameEngine->setNativeHandle(nullptr);
 
     return 0;
+}
+
+bool playNativeAudio(void* object, const char *parameter){
+    JNIEnv* env;
+    jvm->GetEnv((void**)&env, JNI_VERSION_1_6);
+
+    jstring path = env->NewStringUTF(parameter);
+    env->CallVoidMethod( (static_cast<jobject>(object)), playAudio, path);
+
+    return false;
 }

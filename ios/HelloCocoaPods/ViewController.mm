@@ -17,6 +17,7 @@
 #import "ViewController.h"
 
 #import <MetalKit/MTKView.h>
+#import <AVFAudio/AVFAudio.h>
 
 #import "GameEngine.hpp"
 
@@ -26,6 +27,15 @@
 
 @implementation ViewController {
     GameEngine* _gameEngine;
+    NSArray<AVAudioPlayer*>* _audioPlayers;
+    NSMutableDictionary<NSString*, NSData*>* _audioTrack;
+}
+
+// C "trampoline" function to invoke Objective-C method
+bool playNativeAudio(void *self, const char* parameter)
+{
+    // Call the Objective-C method using Objective-C syntax
+    return [(__bridge id)self playAudio:[NSString stringWithUTF8String:parameter]];
 }
 
 - (void)viewDidLoad {
@@ -43,12 +53,47 @@
 //    NSString* content = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
     
     _gameEngine = new GameEngine((__bridge void*) mtkView.layer, CACurrentMediaTime());
+    _gameEngine->setNativeHandle((__bridge void*) self);
     // Give our View a starting size based on the drawable size.
     [self mtkView:mtkView drawableSizeWillChange:mtkView.drawableSize];
+    
+    
+    _audioPlayers = @[
+        [AVAudioPlayer alloc],
+        [AVAudioPlayer alloc],
+        [AVAudioPlayer alloc],
+        [AVAudioPlayer alloc],
+        [AVAudioPlayer alloc],
+    ];
+    
+    NSData* empty = [NSData alloc];
+    for(AVAudioPlayer* player in _audioPlayers) {
+        [[player initWithData:empty error:NULL] stop];
+    }
+    
+    _audioTrack = [[NSMutableDictionary<NSString*, NSData*> alloc] init];
 }
 
 - (void)dealloc {
     delete _gameEngine;
+}
+
+- (BOOL) playAudio:(NSString*)path{
+    NSData* data = _audioTrack[path];
+    if(!data) {
+        NSArray* components = [path componentsSeparatedByString:@"."];
+        NSURL* url = [[NSBundle mainBundle] URLForResource:components[0] withExtension:components[1]];
+        data = [[NSData alloc] initWithContentsOfURL:url];
+        _audioTrack[path] = data;
+    }
+    
+    for(AVAudioPlayer* player in _audioPlayers)
+    {
+       // do stuff with object
+        if(!player.isPlaying) return [[player initWithData:data error:NULL] play];
+    }
+    
+    return false;
 }
 
 - (void)mtkView:(nonnull MTKView*)view drawableSizeWillChange:(CGSize)size {
