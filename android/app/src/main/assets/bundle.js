@@ -1,5 +1,7 @@
 // test
 
+console.log = globalThis.log
+
 class Vec4 {
     constructor(x, y, z, w = 1) { this.set(x, y, z, w) }
 
@@ -8,9 +10,11 @@ class Vec4 {
         this.y = y
         this.z = z
         this.w = w == undefined ? this.w : w
+
+        return this
     }
 
-    copy(target) { this.set(target.x, target.y, target.z, target.w) }
+    copy(target) { return this.set(target.x, target.y, target.z, target.w) }
 
     clone() { return new Vec4(this.x, this.y, this.z, this.w) }
 }
@@ -25,15 +29,33 @@ class Vec3 {
         this.x = x
         this.y = y
         this.z = z == undefined ? this.z : z
+
+        return this
     }
 
-    copy(target) { this.set(target.x, target.y, target.z) }
+    copy(target) { return this.set(target.x, target.y, target.z) }
 
     clone() { return new Vec3(this.x, this.y, this.z) }
+
+    lengthSqr() {
+        let { x, y, z } = this
+        return x * x + y * y + z * z
+    }
+
+    normalize() {
+        let length = 1. / Math.sqrt(this.lengthSqr())
+
+        this.x *= length
+        this.y *= length
+        this.z *= length
+
+        return this
+    }
 }
 
 Vec3.ONE = new Vec3(1, 1, 1)
 Vec3.ZERO = new Vec3(0, 0, 0)
+Vec3.HALF = new Vec3(.5, .5, .5)
 
 class Vec2 {
     constructor(x, y) { this.set(x, y) }
@@ -41,17 +63,34 @@ class Vec2 {
     set(x, y) {
         this.x = x
         this.y = y
+
+        return this
     }
 
-    copy(target) { this.set(target.x, target.y) }
+    copy(target) { return this.set(target.x, target.y) }
 
     clone() { return new Vec2(this.x, this.y) }
+
+    lengthSqr() {
+        let { x, y } = this
+        return x * x + y * y
+    }
+
+    normalize() {
+        let length = 1. / Math.sqrt(this.lengthSqr())
+
+        this.x *= length
+        this.y *= length
+
+        return this
+    }
 }
 
 Vec2.ONE = new Vec2(1, 1)
 Vec2.ZERO = new Vec2(0, 0)
+Vec2.HALF = new Vec2(.5, .5)
 
-class Node {
+class FNode {
     constructor(id) {
         this.native = new Float32Array(10)
         this.native[0] = id
@@ -70,6 +109,11 @@ class Node {
     }
 
     id() { return this.native[0] }
+
+    destroy() {
+        for (let i of this.components) i.destroy && i.destroy()
+        globalThis.destroyEntity(this.id())
+    }
 
     setActive(enabled) {
         if (this.active == enabled) return
@@ -91,8 +135,8 @@ class Node {
         let scene = this
         while (scene.id() >= 0) scene = scene.parent
 
-        let id = globalThis.createEntity(scene.nativeScene, this.id())
-        let node = new Node(id)
+        let id = globalThis.createEntity(scene.nativeScene[0], this.id())
+        let node = new FNode(id)
 
         this.children.push(node)
         node.parent = this
@@ -155,6 +199,8 @@ class Component {
         this.node = node
         node.addComponent(this)
         this.enabled = true
+        this.onEnableChanged = null
+        this.destroy = null
     }
 
     setEnable(enabled) {
@@ -169,36 +215,101 @@ class Camera extends Component {
     constructor(node) {
         super(node)
 
+        this.scale = 1
+        this.width = 1
+        this.height = 1
         globalThis.addCamera(node.id())
+
+        let scene = node
+        while (scene.id() >= 0) scene = scene.parent
+
+        if (scene.camera) {
+            console.log('Scene has already a camera')
+            return
+        }
+
+        scene.camera = this
+        scene.nativeScene[1] = node.id()
+    }
+
+    onResizeView(width, height) {
+        let scale = this.scale
+        this.width = width
+        this.height = height
+        globalThis.updateCamera(this.node.id(), width * scale, height * scale)
+    }
+
+    setScale(scale) {
+        this.scale = scale
+        this.onResizeView(this.width, this.height)
     }
 }
 
-class Scene extends Node {
+class Scene extends FNode {
     constructor() {
         super(-1)
 
         this.camera = null
-        this.nativeScene = globalThis.beginScene()
+        this.textures = null
+        this.font = null
+        this.transformBuffer = null
+        this.bufferLength = 0
+        this.interactables = []
+        this.nativeScene = [globalThis.beginScene(), -1]
+    }
+
+    init() {
+        let textures = this.textures
+        if (textures) {
+            for (let i in textures) textures[i].native = loadImage(i + '.ktx2')
+        }
+
+        this.font && globalThis.buildFont(this.font)
+
+        return this
+    }
+
+    checkInput(x, y, state) {
+        for (let i of this.interactables) {
+            if (!i.enabled) continue
+            i.node.updateWorld()
+            if (i.check(x, y, state)) {
+                return true
+            }
+        }
     }
 
     onResizeView(width, height) {
-        let fit_width = width * designHeight < height * designWidth
-        let aspect = width / height
-        let ZOOM = fit_width ? designWidth : designHeight
-        input.scale = ZOOM / (fit_width ? width : height)
-
-        width = fit_width ? ZOOM : Math.round(ZOOM * aspect)
-        height = fit_width ? Math.round(ZOOM / aspect) : ZOOM
-        globalThis.updateCamera(this.getCameraNative(), width, height)
+        this.camera.onResizeView(width, height)
 
         let bound = this.getComponent(BoundBox2D)
+        if (!bound) return
         bound.updateSize(width, height)
         bound.alignChildren()
     }
 
-    getCameraNative() { return this.camera.node.id() }
+    sendUpdateTransform(list) {
+        const SEGMENT = 10
+        let transformBuffer = this.transformBuffer
+        let length = list.length * SEGMENT
+        if (this.bufferLength != length) {
+            transformBuffer = new Float32Array(length)
+            this.bufferLength = length
+            this.transformBuffer = transformBuffer
+        }
 
-    update(dt, interactables) {
+        let offset = 0
+        for (let i of list) {
+            transformBuffer.set(i.toArray(), offset)
+            offset += SEGMENT
+
+            i.onDirty()
+        }
+
+        globalThis.updateTransforms(transformBuffer)
+    }
+
+    update(dt) {
         let a = [...this.children]
 
         let id = 0
@@ -209,25 +320,25 @@ class Scene extends Node {
                 if (!c.enabled) continue
                 c.update && c.update(dt)
 
-                if (interactables && (
-                    (c instanceof Button) ||
-                    (c instanceof Toggle) ||
-                    (c instanceof ScrollView)))
-                    interactables.push(c)
+                // if (interactables && (
+                //     (c instanceof Button) ||
+                //     (c instanceof Toggle) ||
+                //     (c instanceof ScrollView)))
+                //     interactables.push(c)
             }
 
             for (let i of node.children) i.active && a.push(i)
         }
 
         a = a.filter(i => { return i.isDirty })
-        a.length > 0 && globalThis.sendUpdateTransform(a)
+        a.length > 0 && this.sendUpdateTransform(a)
 
-        return interactables
+        return this
     }
 }
 
 class BoundBox2D extends Component {
-    constructor(node, size, pivot) {
+    constructor(node, size, pivot = null) {
         super(node)
 
         this.onBoundChanged = null
@@ -241,6 +352,7 @@ class BoundBox2D extends Component {
         this._right = 0
 
         this.size = size
+        pivot ||= Vec2.HALF.clone()
         this.pivot = pivot
 
         let width = size.x
@@ -264,6 +376,7 @@ class BoundBox2D extends Component {
     updateAlignment() {
         let horizontal = this.horizontalAlign
         let vertical = this.verticalAlign
+        // if (horizontal == 0 && vertical == 0) return
 
         let node = this.node
         let parent = node.parent.getComponent(BoundBox2D)
@@ -298,7 +411,6 @@ class BoundBox2D extends Component {
                 height = pHeight - (this._bottom + this._top)
         }
 
-        this.updateSize(width, height) && this.alignChildren()
 
         let pos = node.position
         if (horizontal != 0) {
@@ -310,6 +422,13 @@ class BoundBox2D extends Component {
             pos.y = (parent.bottom + this._bottom) - this.bottom
             node.isDirty = true
         }
+
+        if (this.updateSize(width, height)) {
+            this.alignChildren()
+            return false
+        }
+
+        return true
     }
 
     updateSize(width, height) {
@@ -365,8 +484,7 @@ class BoundBox2D extends Component {
         if (this.horizontalAlign > 1) width = size.x
         if (this.verticalAlign > 1) height = size.y
 
-        if (this.updateSize(width, height)) {
-            this.updateAlignment()
+        if (this.updateSize(width, height) && this.updateAlignment()) {
             this.alignChildren()
         }
     }
@@ -775,11 +893,21 @@ class SpriteRadial extends SpriteSimple {
 }
 
 class Button extends Component {
-    constructor(node) {
+    constructor(node, inputMask = null) {
         super(node)
 
         this.scale = 0
         this.target = node.getComponent(BoundBox2D)
+
+        this.inputMask = inputMask || uiRoot
+        this.inputMask.interactables.push(this)
+    }
+
+    destroy() {
+        let arr = this.inputMask.interactables
+        let id = arr.indexOf(this)
+        arr[id] = arr[arr.length - 1]
+        arr.length--
     }
 
     check(x, y, state) {
@@ -816,8 +944,8 @@ class Button extends Component {
 }
 
 class Toggle extends Button {
-    constructor(node) {
-        super(node)
+    constructor(node, inputMask = null) {
+        super(node, inputMask)
 
         this.checkmark = node.children[0]
         this.isChecked = this.checkmark.active
@@ -831,16 +959,14 @@ class Toggle extends Button {
     }
 }
 
-class ScrollView extends Component {
-    constructor(node) {
-        super(node)
+class ScrollView extends Button {
+    constructor(node, inputMask = null) {
+        super(node, inputMask)
 
         this.deltaX = 0
         this.deltaY = 0
-        this.scale = 0
-
-        this.target = node.getComponent(BoundBox2D)
         this.content = null
+        this.interactables = []
         node.children.length && this.setContent(node.children[0])
     }
 
@@ -860,7 +986,14 @@ class ScrollView extends Component {
             this.deltaX = x - globalThis.input.prevX
             this.deltaY = y - globalThis.input.prevY
 
-            // return true
+            for (let i of this.interactables) {
+                if (!i.enabled) continue
+                i.node.updateWorld()
+                if (i.check(x, y, state)) {
+                    return true
+                }
+            }
+            return true
         } else if (this.scale > 0) {
             this.scale = -1
         }
@@ -911,7 +1044,7 @@ class Layout extends Component {
 
     forceUpdate() {
         this.lastCount = 0
-        this.update(0)
+        // this.update(0)
     }
 
     update(dt) {
@@ -1002,8 +1135,68 @@ class ProgressCircle extends Component {
     get() { return this.value }
 }
 
+var input = {
+    x: 0, y: 0,
+    prevX: 0, prevY: 0,
+    state: 3, prevState: 3,
+    stack: 0, scale: 1
+}
+
+var resizeView = function (width, height) {
+    let fit_width = width * designHeight < height * designWidth
+    let aspect = width / height
+    let ZOOM = fit_width ? designWidth : designHeight
+    input.scale = ZOOM / (fit_width ? width : height)
+
+    width = fit_width ? ZOOM : Math.round(ZOOM * aspect)
+    height = fit_width ? Math.round(ZOOM / aspect) : ZOOM
+
+    uiRoot.onResizeView(width, height)
+    gameRoot.onResizeView(width, height)
+}
+
+var checkInput = function (first, second) {
+    let { state, prevState, scale, x, y } = input
+
+    input.stack = state == prevState ? (input.stack + 1) : 0
+    input.prevState = input.state
+
+    if (state == 3 && prevState == 3) return // no input
+
+    // let isHold = state == 0 && prevState == 0
+    let isTap = state == 0 && prevState != 0
+    // let isClick = state == 3 && prevState == 0
+
+    x *= scale
+    y *= scale
+
+    if (isTap) {
+        input.prevX = x
+        input.prevY = y
+    }
+
+    if (!first.checkInput(x, y, state)) second.checkInput(x, y, state)
+
+    input.prevX = x
+    input.prevY = y
+}
+
+var update = function (dt) {
+    if (dt > 1) dt = 0
+
+    globalThis.checkInput(
+        uiRoot.update(dt),
+        gameRoot.update(dt))
+
+    let [scene1, cam1] = gameRoot.nativeScene
+    let [scene2, cam2] = uiRoot.nativeScene
+    globalThis.render(
+        scene1, cam1,
+        scene2, cam2)
+}
+
 var buildFont = function (font) {
-    let text = "QWERTYUIOPASDFGHJKLZXCVBNM1234567890qwertyuiopasdfghjklzxcvbnm!@#$%^&*()-=[];',./_+{}:\"<>?\\|`~ "
+    let text = font.text
     let buffer = new Int16Array(text.length * 7 + 4)
 
     font.native = globalThis.renderText(font.name, text, buffer, font.width, font.height, font.scale)
@@ -1026,78 +1219,5 @@ var buildFont = function (font) {
         font.data[i] = { ax, offsetX, offsetY, width, height, u0, v0, u1, v1 }
         count += 7
     }
-}
-
-var transformBuffer = null
-var bufferLength = 0
-var input = {
-    x: 0, y: 0,
-    prevX: 0, prevY: 0,
-    state: 3, prevState: 3,
-    stack: 0, scale: 1
-}
-
-var resizeView = function (width, height) {
-    uiRoot.onResizeView(width, height)
-}
-
-var sendUpdateTransform = function (list) {
-    const SEGMENT = 10
-    let length = list.length * SEGMENT
-    if (bufferLength != length) {
-        transformBuffer = new Float32Array(length)
-        bufferLength = length
-    }
-
-    let offset = 0
-    for (let i of list) {
-        transformBuffer.set(i.toArray(), offset)
-        offset += SEGMENT
-
-        i.onDirty()
-    }
-
-    globalThis.updateTransforms(transformBuffer)
-}
-
-var checkInput = function (list) {
-    let { state, prevState, scale, x, y } = input
-
-    input.stack = state == prevState ? (input.stack + 1) : 0
-    input.prevState = input.state
-
-    if (state == 3 && prevState == 3) return // no input
-
-    // let isHold = state == 0 && prevState == 0
-    let isTap = state == 0 && prevState != 0
-    // let isClick = state == 3 && prevState == 0
-
-    x *= scale
-    y *= scale
-
-    if (isTap) {
-        input.prevX = x
-        input.prevY = y
-    }
-
-    for (let i of list) {
-        i.node.updateWorld()
-        if (i.check(x, y, state)) {
-            break
-        }
-    }
-
-    input.prevX = x
-    input.prevY = y
-}
-
-var update = function (dt) {
-    if(dt > 1) dt = 0
-
-    globalThis.checkInput(uiRoot.update(dt, []))
-
-    gameRoot.update(dt, null)
-
-    globalThis.render(gameRoot.nativeScene, gameRoot.getCameraNative(), uiRoot.nativeScene, uiRoot.getCameraNative())
 }
 
