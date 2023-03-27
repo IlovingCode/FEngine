@@ -199,8 +199,6 @@ class Component {
         this.node = node
         node.addComponent(this)
         this.enabled = true
-        this.onEnableChanged = null
-        this.destroy = null
     }
 
     setEnable(enabled) {
