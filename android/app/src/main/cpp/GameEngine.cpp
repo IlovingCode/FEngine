@@ -75,6 +75,8 @@ JSGlobalContextRef globalContext;
 double current_time;
 
 GameEngine::~GameEngine(){
+    engine->destroy(view->getScene());
+    
     engine->destroy(view);
     engine->destroy(renderer);
     engine->destroy(swapChain);
@@ -136,6 +138,20 @@ JSCALLBACK(createEntity){
     }
     
     return JSValueMakeNumber(ctx, Entity::smuggle(e));
+}
+
+JSCALLBACK(destroyEntity){
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Scene* scene = static_cast<Scene*>(data);
+    
+    uint32_t id = JSValueToNumber(ctx, arguments[1], nullptr);
+    Entity e = Entity::import(id);
+    scene->remove(e);
+    engine->destroy(e);
+    EntityManager::get().destroy(e);
+    
+    return arguments[0];
 }
 
 math::float3 eulerAngles(math::quatf q) {
@@ -528,7 +544,7 @@ JSCALLBACK(addText) {
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
         .material(0, matInstance)
 //        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
-        .culling(true)
+        .culling(false)
         .receiveShadows(false)
         .castShadows(false)
         .build(*engine, entity);
@@ -614,7 +630,7 @@ JSCALLBACK(addRenderer){
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
         .material(0, matInstance)
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, getIndexBuffer(), offset, count)
-        .culling(true)
+        .culling(false)
         .receiveShadows(false)
         .castShadows(false)
         .build(*engine, entity);
@@ -798,6 +814,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("addCamera", addCamera, globalObject);
     registerNativeFunction("log", log, globalObject);
     registerNativeFunction("createEntity", createEntity, globalObject);
+    registerNativeFunction("destroyEntity", destroyEntity, globalObject);
     registerNativeFunction("addRenderer", addRenderer, globalObject);
     registerNativeFunction("updateTransforms", updateTransforms, globalObject);
     registerNativeFunction("updateCamera", updateCamera, globalObject);
