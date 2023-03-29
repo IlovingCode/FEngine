@@ -556,6 +556,17 @@ class TextSimple extends Component {
         this.native = globalThis.addText(this.node.id(), this.vb, this.font.native, maskId)
     }
 
+    getBBox(bound) {
+        bbox[0] = bound.left
+        bbox[1] = bound.bottom
+        bbox[2] = -1
+        bbox[3] = bound.right
+        bbox[4] = bound.top
+        bbox[5] = 1
+
+        return bbox
+    }
+
     setColor(color) {
         globalThis.updateMaterial(this.node.id(), color.x, color.y, color.z, color.w)
         return this
@@ -674,7 +685,20 @@ class SpriteSimple extends Component {
 
         this.maskId = maskId
         this.vb = this.createData(image)
-        this.native = globalThis.addRenderer(node.id(), this.fillBuffer(bound), image.native, isMask, maskId)
+        this.native = globalThis.addRenderer(
+            node.id(), this.fillBuffer(bound),
+            image.native, isMask, maskId, this.getBBox(bound))
+    }
+
+    getBBox(bound) {
+        bbox[0] = bound.left
+        bbox[1] = bound.bottom
+        bbox[2] = -1
+        bbox[3] = bound.right
+        bbox[4] = bound.top
+        bbox[5] = 1
+
+        return bbox
     }
 
     onBoundUpdated(bound) {
@@ -1139,6 +1163,8 @@ var input = {
     state: 3, prevState: 3,
     stack: 0, scale: 1
 }
+
+const bbox = new Float32Array(6)
 
 var resizeView = function (width, height) {
     let fit_width = width * designHeight < height * designWidth
