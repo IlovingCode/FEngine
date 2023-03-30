@@ -74,8 +74,13 @@ class GameController extends Component {
             return
         }
 
-        let dir = this.dir.set(x - origin.x, y - origin.y)
+        this.onDirection(this.dir.set(x - origin.x, y - origin.y))
+    }
+
+    onDirection(dir) {
         let length = Math.min(Math.sqrt(dir.lengthSqr()), 5)
+        if (length <= 0) return
+
         dir.normalize()
 
         let { width, height, scale } = gameRoot.camera
@@ -97,16 +102,16 @@ class GameController extends Component {
 
         node.isDirty = true
     }
-
-    update(dt) {
-    }
 }
 
 void function init() {
     let { textures } = gameRoot.init()
 
     let node = gameRoot.addChild()
-    node.position.z = 1
+    let pos = node.position
+    pos.z = 1
+    pos.x = textures.bg0.width * .25
+    pos.y = textures.bg0.height * .35
     new Camera(node).scale = .5
 
     node = gameRoot.addChild()
