@@ -59,7 +59,6 @@ using namespace std;
 using namespace filament;
 using namespace utils;
 
-Engine* engine;
 Renderer* renderer;
 View* view;
 SwapChain* swapChain;
@@ -75,6 +74,7 @@ JSGlobalContextRef globalContext;
 double current_time;
 
 GameEngine::~GameEngine(){
+    Engine *engine = renderer->getEngine();
     engine->destroy(view->getScene());
     
     engine->destroy(view);
@@ -111,7 +111,7 @@ JSCALLBACK(log){
 }
 
 JSCALLBACK(beginScene){
-    Scene* scene = engine->createScene();
+    Scene* scene = renderer->getEngine()->createScene();
     
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, scene, sizeof(scene), nullptr, nullptr, nullptr);
 }
@@ -132,7 +132,7 @@ JSCALLBACK(createEntity){
 
     int32_t id = JSValueToNumber(ctx, arguments[1], nullptr);
     if(id >= 0){
-        auto& tcm = engine->getTransformManager();
+        auto& tcm = renderer->getEngine()->getTransformManager();
         Entity parent = Entity::import(id);
         tcm.create(e, tcm.getInstance(parent));
     }
@@ -148,7 +148,7 @@ JSCALLBACK(destroyEntity){
     uint32_t id = JSValueToNumber(ctx, arguments[1], nullptr);
     Entity e = Entity::import(id);
     scene->remove(e);
-    engine->destroy(e);
+    renderer->getEngine()->destroy(e);
     EntityManager::get().destroy(e);
     
     return arguments[0];
@@ -174,7 +174,7 @@ JSCALLBACK(getWorldTransform){
     void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
     float* d = static_cast<float*>(buffer);
     
-    auto& tcm = engine->getTransformManager();
+    auto& tcm = renderer->getEngine()->getTransformManager();
     Entity parent = Entity::import(d[0]);
     
     const math::mat4f world = tcm.getWorldTransform(tcm.getInstance(parent));
@@ -217,7 +217,7 @@ JSCALLBACK(loadImage) {
     size = stream.size();
 #endif
 
-    ktxreader::Ktx2Reader reader(*engine);
+    ktxreader::Ktx2Reader reader(*renderer->getEngine());
 
     // Uncompressed formats are lower priority, so they get added last.
     reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
@@ -266,6 +266,7 @@ IndexBuffer* getIndexBuffer() {
             count += 4;
         }
         
+        Engine *engine = renderer->getEngine();
         ib = IndexBuffer::Builder()
             .indexCount(LENGTH)
             .bufferType(IndexBuffer::IndexType::USHORT)
@@ -285,6 +286,7 @@ JSCALLBACK(updateRenderer) {
     size_t vc = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     data = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
     
+    Engine *engine = renderer->getEngine();
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(data, vc * 4, nullptr));
     
     if(argumentCount > 2) {
@@ -302,7 +304,7 @@ JSCALLBACK(updateRenderer) {
 JSCALLBACK(updateMaterial) {
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     
-    auto& rm = engine->getRenderableManager();
+    auto& rm = renderer->getEngine()->getRenderableManager();
     auto instance = rm.getInstance(Entity::import(id));
     MaterialInstance* material = rm.getMaterialInstanceAt(instance, 0);
     
@@ -459,6 +461,7 @@ JSCALLBACK(renderText) {
 //        x += roundf(kern * scale);
     }
     
+    Engine *engine = renderer->getEngine();
     Texture* texture = Texture::Builder()
         .format(Texture::InternalFormat::R8)
         .width(b_w)
@@ -490,11 +493,7 @@ JSCALLBACK(addText) {
     size_t vc = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
     
-//    array = JSValueToObject(ctx, arguments[2], nullptr);
-//    size_t ic = JSObjectGetTypedArrayLength(ctx, array, nullptr);
-//    void* INDICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-
-//    static IndexBuffer *ib;
+    Engine *engine = renderer->getEngine();
     static Material *mat;
     
     if(mat == nullptr) {
@@ -544,7 +543,7 @@ JSCALLBACK(addText) {
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
         .material(0, matInstance)
 //        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib)
-        .culling(false)
+        .culling(true)
         .receiveShadows(false)
         .castShadows(false)
         .build(*engine, entity);
@@ -560,6 +559,7 @@ JSCALLBACK(addRenderer){
     size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
     void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
 
+    Engine *engine = renderer->getEngine();
     static Material *mat, *mask;
     
     if(mat == nullptr) {
@@ -626,11 +626,15 @@ JSCALLBACK(addRenderer){
         count = 6;
     }
     
+    array = JSValueToObject(ctx, arguments[5], nullptr);
+    data = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    float* bbox = static_cast<float*>(data);
+    
     RenderableManager::Builder(1)
-        .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
+        .boundingBox({{ bbox[0], bbox[1], bbox[2] }, { bbox[3], bbox[4], bbox[5] }})
         .material(0, matInstance)
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, getIndexBuffer(), offset, count)
-        .culling(false)
+        .culling(true)
         .receiveShadows(false)
         .castShadows(false)
         .build(*engine, entity);
@@ -646,7 +650,7 @@ JSCALLBACK(updateTransforms){
 
     const uint8_t STRIKE = 10;
     
-    auto& tcm = engine->getTransformManager();
+    auto& tcm = renderer->getEngine()->getTransformManager();
     tcm.openLocalTransformTransaction();
     
     for (uint32_t i = 0; i < count; i += STRIKE) {
@@ -671,7 +675,7 @@ JSCALLBACK(addCamera){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
     
-    Camera* camera = engine->createCamera(entity);
+    Camera* camera = renderer->getEngine()->createCamera(entity);
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, camera, sizeof(camera), nullptr, nullptr, nullptr);
 }
 
@@ -679,7 +683,7 @@ JSCALLBACK(updateCamera){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
     
-    auto camera = engine->getCameraComponent(entity);
+    auto camera = renderer->getEngine()->getCameraComponent(entity);
     
     if(argumentCount == 3) {
         const double width = JSValueToNumber(ctx, arguments[1], nullptr);
@@ -713,7 +717,7 @@ JSCALLBACK(render){
             
             uint32_t id = JSValueToNumber(ctx, arguments[i + 1], nullptr);
             Entity entity = Entity::import(id);
-            auto camera = engine->getCameraComponent(entity);
+            auto camera = renderer->getEngine()->getCameraComponent(entity);
             
             view->setScene(scene);
             view->setCamera(camera);
@@ -779,7 +783,7 @@ void GameEngine::setNativeHandle(void *handle) {
 }
 
 GameEngine::GameEngine(void* nativeWindow, double now){
-    engine = Engine::create(
+    Engine *engine = Engine::create(
 #ifdef ANDROID
     Engine::Backend::OPENGL
 #else
@@ -884,18 +888,18 @@ void GameEngine::update(double now){
 
 void GameEngine::resize(uint16_t width, uint16_t height){
     view->setViewport({0, 0, width, height});
-    
+
     JSValueRef args[2] {
         JSValueMakeNumber(globalContext, width),
         JSValueMakeNumber(globalContext, height)
     };
-    
+
     static JSObjectRef resizeView;
-    
+
     if(resizeView == nullptr) {
         JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
         resizeView = getScriptFunction("resizeView", globalObject);
     }
-    
+
     JSObjectCallAsFunction(globalContext, resizeView, nullptr, 2, args, nullptr);
 }
