@@ -38,6 +38,10 @@
 #include <utils/Path.h>
 #include <utils/EntityManager.h>
 
+#include <gltfio/AssetLoader.h>
+#include <gltfio/ResourceLoader.h>
+#include <gltfio/TextureProvider.h>
+#include <gltfio/materials/uberarchive.h>
 #include <gltfio/math.h>
 
 #include <JavaScriptCore/JavaScript.h>
@@ -57,11 +61,13 @@
 
 using namespace std;
 using namespace filament;
+using namespace gltfio;
 using namespace utils;
 
 Renderer* renderer;
 View* view;
 SwapChain* swapChain;
+AssetLoader *assetLoader;
 void* nativeHandle;
 
 #ifdef ANDROID
@@ -116,10 +122,62 @@ JSCALLBACK(beginScene){
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, scene, sizeof(scene), nullptr, nullptr, nullptr);
 }
 
-JSCALLBACK(playSound) {
+JSCALLBACK(addModel) {
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void* buffer = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    FilamentAsset *primary = static_cast<FilamentAsset*>(buffer);
+    FilamentInstance *bundle = assetLoader->createInstance(primary);
     
+    array = JSValueToObject(ctx, arguments[1], nullptr);
+    buffer = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Scene *scene = static_cast<Scene*>(buffer);
+    scene->addEntities(bundle->getEntities(), bundle->getEntityCount());
     
     return nullptr;
+}
+
+JSCALLBACK(loadModel) {
+    Engine *engine = renderer->getEngine();
+    
+    static ResourceLoader *resourceLoader = nullptr;
+    
+    if(resourceLoader == nullptr) {
+        MaterialProvider *materialProvider = createUbershaderProvider(engine,
+                    UBERARCHIVE_DEFAULT_DATA, UBERARCHIVE_DEFAULT_SIZE);
+        assetLoader = AssetLoader::create({engine, materialProvider, nullptr});
+        
+        resourceLoader = new ResourceLoader({
+            .engine = engine,
+            .normalizeSkinningWeights = true
+        });
+        TextureProvider *stbDecoder = createStbProvider(engine);
+        TextureProvider *ktxDecoder = createKtx2Provider(engine);
+
+        resourceLoader->addTextureProvider("image/png", stbDecoder);
+        resourceLoader->addTextureProvider("image/jpeg", stbDecoder);
+        resourceLoader->addTextureProvider("image/ktx2", ktxDecoder);
+    }
+
+    // Load the glTF file.
+    string filename = JSValueToStdString(ctx, arguments[0]);
+    const uint8_t* data = nullptr;
+    size_t size = 0;
+
+#ifdef ANDROID
+    AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
+    data = AAsset_getBuffer(asset);
+    size = AAsset_getLength(asset);
+#else
+    ifstream file(assets + filename, ios::binary);
+    const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
+    data = stream.data();
+    size = stream.size();
+#endif
+
+    FilamentAsset *bunble = assetLoader->createAsset(data, (uint32_t)size);
+    resourceLoader->loadResources(bunble);
+    
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, bunble, sizeof(bunble), nullptr, nullptr, nullptr);
 }
 
 JSCALLBACK(createEntity){
@@ -709,6 +767,9 @@ JSCALLBACK(updateCamera){
 }
 
 JSCALLBACK(render){
+    view->setBlendMode(BlendMode::OPAQUE);
+    view->setPostProcessingEnabled(false);
+    
     if (renderer->beginFrame(swapChain)) {
         for(size_t i = 0; i < argumentCount - 1; i += 2) {
             JSObjectRef array = JSValueToObject(ctx, arguments[i], nullptr);
@@ -722,6 +783,9 @@ JSCALLBACK(render){
             view->setScene(scene);
             view->setCamera(camera);
             renderer->render(view);
+            
+            view->setBlendMode(BlendMode::TRANSLUCENT);
+            view->setPostProcessingEnabled(true);
         }
         renderer->endFrame();
     }
@@ -795,21 +859,21 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     view = engine->createView();
     current_time = now;
     
-    view->setPostProcessingEnabled(true);
+//    view->setBlendMode(BlendMode::TRANSLUCENT);
+//    view->setPostProcessingEnabled(true);
     view->setStencilBufferEnabled(true);
     
     view->setAntiAliasing(AntiAliasing::NONE);
     view->setDithering(Dithering::NONE);
     view->setScreenSpaceRefractionEnabled(false);
     view->setShadowingEnabled(false);
-    view->setBlendMode(BlendMode::TRANSLUCENT);
     
 //    auto cg = ColorGrading::Builder()
 //        .contrast(1.f)
 //        .build(*engine);
 //    view->setColorGrading(cg);
     
-    renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = true});
+    renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = false});
     
     globalContext = JSGlobalContextCreate(nullptr);
     JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
@@ -830,6 +894,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("renderText", renderText, globalObject);
     registerNativeFunction("render", render, globalObject);
     registerNativeFunction("playAudio", playAudio, globalObject);
+    registerNativeFunction("loadModel", loadModel, globalObject);
     
 #ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);

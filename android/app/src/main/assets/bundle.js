@@ -1157,6 +1157,12 @@ class ProgressCircle extends Component {
     get() { return this.value }
 }
 
+class ModelSimple extends Component{
+    constructor() {
+        
+    }
+}
+
 var input = {
     x: 0, y: 0,
     prevX: 0, prevY: 0,
@@ -1165,6 +1171,7 @@ var input = {
 }
 
 const bbox = new Float32Array(6)
+let skipRender = false
 
 var resizeView = function (width, height) {
     let fit_width = width * designHeight < height * designWidth
@@ -1177,6 +1184,8 @@ var resizeView = function (width, height) {
 
     uiRoot.onResizeView(width, height)
     gameRoot.onResizeView(width, height)
+
+    skipRender = true
 }
 
 var checkInput = function (first, second) {
@@ -1211,6 +1220,11 @@ var update = function (dt) {
     globalThis.checkInput(
         uiRoot.update(dt),
         gameRoot.update(dt))
+
+    if (skipRender) {
+        skipRender = false
+        return
+    }
 
     let [scene1, cam1] = gameRoot.nativeScene
     let [scene2, cam2] = uiRoot.nativeScene
