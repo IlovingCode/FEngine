@@ -30,6 +30,7 @@
 #include <filament/Material.h>
 #include <filament/MaterialInstance.h>
 #include <filament/TransformManager.h>
+#include <filament/LightManager.h>
 #include <filament/TextureSampler.h>
 #include <filament/Texture.h>
 #include <filament/ColorGrading.h>
@@ -37,6 +38,7 @@
 #include <utils/Entity.h>
 #include <utils/Path.h>
 #include <utils/EntityManager.h>
+#include <utils/NameComponentManager.h>
 
 #include <gltfio/AssetLoader.h>
 #include <gltfio/ResourceLoader.h>
@@ -126,14 +128,41 @@ JSCALLBACK(addModel) {
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
     void* buffer = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     FilamentAsset *primary = static_cast<FilamentAsset*>(buffer);
-    FilamentInstance *bundle = assetLoader->createInstance(primary);
     
     array = JSValueToObject(ctx, arguments[1], nullptr);
     buffer = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     Scene *scene = static_cast<Scene*>(buffer);
-    scene->addEntities(bundle->getEntities(), bundle->getEntityCount());
     
-    return nullptr;
+    JSObjectRef data = JSValueToObject(ctx, arguments[2], nullptr);
+    JSObjectRef parent = JSValueToObject(ctx, arguments[3], nullptr);
+    
+    Engine *engine = renderer->getEngine();
+    FilamentInstance *bundle = primary->getInstance();
+    const Entity *entities = bundle->getEntities();
+    size_t count = bundle->getEntityCount();
+    scene->addEntities(entities, count);
+    TransformManager &tcm = engine->getTransformManager();
+    
+    Entity e = bundle->getRoot();
+    JSStringRef name = JSStringCreateWithUTF8CString(primary->getSceneName(0));
+    JSValueRef id = JSValueMakeNumber(ctx, Entity::smuggle(e));
+    JSObjectSetProperty(ctx, data, name, id, kJSPropertyAttributeNone, nullptr);
+    JSStringRelease(name);
+    
+    for(size_t i = 0; i < count; i++) {
+        e = entities[i];
+        name = JSStringCreateWithUTF8CString(primary->getName(e));
+        id = JSValueMakeNumber(ctx, Entity::smuggle(e));
+        JSObjectSetProperty(ctx, data, name, id, kJSPropertyAttributeNone, nullptr);
+        
+        e = tcm.getParent(tcm.getInstance(e));
+        id = JSValueMakeNumber(ctx, Entity::smuggle(e));
+        JSObjectSetProperty(ctx, parent, name, id, kJSPropertyAttributeNone, nullptr);
+        
+        JSStringRelease(name);
+    }
+        
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, bundle, sizeof(bundle), nullptr, nullptr, nullptr);
 }
 
 JSCALLBACK(loadModel) {
@@ -144,11 +173,14 @@ JSCALLBACK(loadModel) {
     if(resourceLoader == nullptr) {
         MaterialProvider *materialProvider = createUbershaderProvider(engine,
                     UBERARCHIVE_DEFAULT_DATA, UBERARCHIVE_DEFAULT_SIZE);
-        assetLoader = AssetLoader::create({engine, materialProvider, nullptr});
+        
+        EntityManager& em = EntityManager::get();
+        NameComponentManager* ncm = new NameComponentManager(em);
+        assetLoader = AssetLoader::create({engine, materialProvider, ncm, &em});
         
         resourceLoader = new ResourceLoader({
             .engine = engine,
-            .normalizeSkinningWeights = true
+            .normalizeSkinningWeights = false
         });
         TextureProvider *stbDecoder = createStbProvider(engine);
         TextureProvider *ktxDecoder = createKtx2Provider(engine);
@@ -224,6 +256,39 @@ math::float3 eulerAngles(math::quatf q) {
         (atan2(2.0f * (nq.x * nq.y + nq.w * nq.z),
             nq.w * nq.w + nq.x * nq.x - nq.y * nq.y - nq.z * nq.z))
     };
+}
+
+JSCALLBACK(getLocalTransform){
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+//    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* buffer = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+    float* d = static_cast<float*>(buffer);
+    
+    auto& tcm = renderer->getEngine()->getTransformManager();
+    Entity parent = Entity::import(d[0]);
+    
+    const math::mat4f world = tcm.getTransform(tcm.getInstance(parent));
+    
+    math::float3 translation, scale, rotation;
+    math::quatf quaternion;
+    
+    gltfio::decomposeMatrix(world, &translation, &quaternion, &scale);
+    
+    rotation = eulerAngles(quaternion);
+    
+    d[1] = translation.x;
+    d[2] = translation.y;
+    d[3] = translation.z;
+
+    d[4] = scale.x;
+    d[5] = scale.y;
+    d[6] = scale.z;
+    
+    d[7] = rotation.x;
+    d[8] = rotation.y;
+    d[9] = rotation.z;
+    
+    return arguments[0];
 }
 
 JSCALLBACK(getWorldTransform){
@@ -743,7 +808,7 @@ JSCALLBACK(updateCamera){
     
     auto camera = renderer->getEngine()->getCameraComponent(entity);
     
-    if(argumentCount == 3) {
+    if(argumentCount <= 3) {
         const double width = JSValueToNumber(ctx, arguments[1], nullptr);
         const double height = JSValueToNumber(ctx, arguments[2], nullptr);
         
@@ -778,7 +843,7 @@ JSCALLBACK(render){
             
             uint32_t id = JSValueToNumber(ctx, arguments[i + 1], nullptr);
             Entity entity = Entity::import(id);
-            auto camera = renderer->getEngine()->getCameraComponent(entity);
+            Camera *camera = renderer->getEngine()->getCameraComponent(entity);
             
             view->setScene(scene);
             view->setCamera(camera);
@@ -861,7 +926,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     
 //    view->setBlendMode(BlendMode::TRANSLUCENT);
 //    view->setPostProcessingEnabled(true);
-    view->setStencilBufferEnabled(true);
+    view->setStencilBufferEnabled(false);
     
     view->setAntiAliasing(AntiAliasing::NONE);
     view->setDithering(Dithering::NONE);
@@ -873,7 +938,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
 //        .build(*engine);
 //    view->setColorGrading(cg);
     
-    renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = false});
+    renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = true});
     
     globalContext = JSGlobalContextCreate(nullptr);
     JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);
@@ -889,12 +954,14 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("updateRenderer", updateRenderer, globalObject);
     registerNativeFunction("updateMaterial", updateMaterial, globalObject);
     registerNativeFunction("getWorldTransform", getWorldTransform, globalObject);
+    registerNativeFunction("getLocalTransform", getLocalTransform, globalObject);
     registerNativeFunction("loadImage", loadImage, globalObject);
     registerNativeFunction("addText", addText, globalObject);
     registerNativeFunction("renderText", renderText, globalObject);
     registerNativeFunction("render", render, globalObject);
     registerNativeFunction("playAudio", playAudio, globalObject);
     registerNativeFunction("loadModel", loadModel, globalObject);
+    registerNativeFunction("addModel", addModel, globalObject);
     
 #ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);
@@ -954,7 +1021,7 @@ void GameEngine::update(double now){
 void GameEngine::resize(uint16_t width, uint16_t height){
     view->setViewport({0, 0, width, height});
 
-    JSValueRef args[2] {
+    const JSValueRef args[2] {
         JSValueMakeNumber(globalContext, width),
         JSValueMakeNumber(globalContext, height)
     };

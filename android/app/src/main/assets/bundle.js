@@ -158,6 +158,30 @@ class FNode {
         for (let i of this.children) i.onDirty()
     }
 
+    fetchLocalTransform() {
+        let { position, rotation, scale } = this
+
+        if (this.isDirty) {
+            let transform = globalThis.getLocalTransform(this.native)
+
+            position.x = transform[1]
+            position.y = transform[2]
+            position.z = transform[3]
+
+            scale.x = transform[4]
+            scale.y = transform[5]
+            scale.z = transform[6]
+
+            rotation.x = transform[7]
+            rotation.y = transform[8]
+            rotation.z = transform[9]
+
+            this.isDirty = false
+        }
+
+        return position
+    }
+
     updateWorld() {
         let worldPos = this.worldPosition
 
@@ -210,13 +234,13 @@ class Component {
 }
 
 class Camera extends Component {
-    constructor(node) {
+    constructor(node, ignoreNative = false) {
         super(node)
 
         this.scale = 1
         this.width = 1
         this.height = 1
-        globalThis.addCamera(node.id())
+        !ignoreNative && globalThis.addCamera(node.id())
 
         let scene = node
         while (scene.id() >= 0) scene = scene.parent
@@ -284,6 +308,33 @@ class Scene extends FNode {
         if (!bound) return
         bound.updateSize(width, height)
         bound.alignChildren()
+    }
+
+    importNodesFromModel(data) {
+        let { id, relation } = data
+        let idMap = {}
+        let nameMap = {}
+        for (let i in id) {
+            let node = new FNode(id[i])
+            idMap[id[i]] = node
+            nameMap[i] = node
+            node.fetchLocalTransform()
+        }
+
+        for (let i in relation) {
+            let parent = idMap[relation[i]]
+            let child = nameMap[i]
+            parent.children.push(child)
+            child.parent = parent
+        }
+
+        let root = nameMap['Scene']
+        this.children.push(root)
+        root.parent = this
+
+        new Camera(nameMap['Camera_Orientation'], true)
+
+        return new ModelSimple(root, data)
     }
 
     sendUpdateTransform(list) {
@@ -1157,9 +1208,12 @@ class ProgressCircle extends Component {
     get() { return this.value }
 }
 
-class ModelSimple extends Component{
-    constructor() {
-        
+class ModelSimple extends Component {
+    constructor(node, data) {
+        super(node)
+
+        this.data = data
+        this.native = null
     }
 }
 
@@ -1182,8 +1236,8 @@ var resizeView = function (width, height) {
     width = fit_width ? ZOOM : Math.round(ZOOM * aspect)
     height = fit_width ? Math.round(ZOOM / aspect) : ZOOM
 
-    uiRoot.onResizeView(width, height)
-    gameRoot.onResizeView(width, height)
+    // uiRoot.onResizeView(width, height)
+    // gameRoot.onResizeView(width, height)
 
     skipRender = true
 }
@@ -1229,8 +1283,9 @@ var update = function (dt) {
     let [scene1, cam1] = gameRoot.nativeScene
     let [scene2, cam2] = uiRoot.nativeScene
     globalThis.render(
-        scene1, cam1,
-        scene2, cam2)
+        scene1, cam1
+        // scene2, cam2
+    )
 }
 
 var buildFont = function (font) {

@@ -107,14 +107,19 @@ class GameController extends Component {
 void function init() {
     let { textures } = gameRoot.init()
 
-    let node = gameRoot.addChild()
-    let pos = node.position
-    pos.z = 1
-    pos.x = textures.bg0.width * .25
-    pos.y = textures.bg0.height * .35
-    new Camera(node).scale = .5
+    // let node = gameRoot.addChild()
+    // let pos = node.position
+    // pos.z = 1
+    // pos.x = textures.bg0.width * .25
+    // pos.y = textures.bg0.height * .35
+    // new Camera(node).scale = .5
 
-    node = gameRoot.addChild()
-    new GameController(node, textures)
+    // node = gameRoot.addChild()
+    // new GameController(node, textures)
+
+    let model = globalThis.loadModel('platform.glb')
+    let data = { id: {}, relation: {} }
+    let native = globalThis.addModel(model, gameRoot.nativeScene[0], data.id, data.relation)
+    gameRoot.importNodesFromModel(data).native = native
 }();
 
