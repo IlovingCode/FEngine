@@ -116,7 +116,7 @@ void function init() {
 
     node = uiRoot.addChild()
     bound = new BoundBox2D(node, new Vec2(300, 300))
-    new SpriteSimple(node, textures.tiny)
+    new SpriteSimple(node, textures.tiny).setEnable(false)
     bound.setAlignment(0, -1, 0, 0, 10, 0)
 
     node = node.addChild()
@@ -171,10 +171,5 @@ void function init() {
         .setText('0')
         .setColor(new Vec4(1, 1, 0, 1))
     bound.setAlignment(-1, 0, 0, 50, 0, 0)
-
-    node = uiRoot.addChild()
-    bound = new BoundBox2D(node, new Vec2(300, 300))
-    new SpriteSimple(node, font)
-    bound.setAlignment(0, 1, 0, 0, 0, 10)
 }();
 

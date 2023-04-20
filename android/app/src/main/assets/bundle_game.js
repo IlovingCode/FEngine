@@ -118,8 +118,11 @@ void function init() {
     // new GameController(node, textures)
 
     let model = globalThis.loadModel('platform.glb')
-    let data = { id: {}, relation: {} }
-    let native = globalThis.addModel(model, gameRoot.nativeScene[0], data.id, data.relation)
+    let data = { nodes: {}, relations: {} }
+    let native = globalThis.addModel(model, gameRoot.nativeScene[0], data)
+
+    console.log(JSON.stringify(data))
     gameRoot.importNodesFromModel(data).native = native
+    gameRoot.camera.scale = .5
 }();
 

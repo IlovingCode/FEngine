@@ -134,7 +134,14 @@ JSCALLBACK(addModel) {
     Scene *scene = static_cast<Scene*>(buffer);
     
     JSObjectRef data = JSValueToObject(ctx, arguments[2], nullptr);
-    JSObjectRef parent = JSValueToObject(ctx, arguments[3], nullptr);
+    
+    JSStringRef name = JSStringCreateWithUTF8CString("nodes");
+    JSObjectRef nodes = JSValueToObject(ctx, JSObjectGetProperty(ctx, data, name, nullptr), nullptr);
+    JSStringRelease(name);
+    
+    name = JSStringCreateWithUTF8CString("relations");
+    JSObjectRef relations = JSValueToObject(ctx, JSObjectGetProperty(ctx, data, name, nullptr), nullptr);
+    JSStringRelease(name);
     
     Engine *engine = renderer->getEngine();
     FilamentInstance *bundle = primary->getInstance();
@@ -144,21 +151,29 @@ JSCALLBACK(addModel) {
     TransformManager &tcm = engine->getTransformManager();
     
     Entity e = bundle->getRoot();
-    JSStringRef name = JSStringCreateWithUTF8CString(primary->getSceneName(0));
+    name = JSStringCreateWithUTF8CString(primary->getSceneName(0));
     JSValueRef id = JSValueMakeNumber(ctx, Entity::smuggle(e));
-    JSObjectSetProperty(ctx, data, name, id, kJSPropertyAttributeNone, nullptr);
+    JSObjectSetProperty(ctx, nodes, name, id, kJSPropertyAttributeNone, nullptr);
     JSStringRelease(name);
     
     for(size_t i = 0; i < count; i++) {
         e = entities[i];
         name = JSStringCreateWithUTF8CString(primary->getName(e));
         id = JSValueMakeNumber(ctx, Entity::smuggle(e));
-        JSObjectSetProperty(ctx, data, name, id, kJSPropertyAttributeNone, nullptr);
+        JSObjectSetProperty(ctx, nodes, name, id, kJSPropertyAttributeNone, nullptr);
         
         e = tcm.getParent(tcm.getInstance(e));
         id = JSValueMakeNumber(ctx, Entity::smuggle(e));
-        JSObjectSetProperty(ctx, parent, name, id, kJSPropertyAttributeNone, nullptr);
+        JSObjectSetProperty(ctx, relations, name, id, kJSPropertyAttributeNone, nullptr);
         
+        JSStringRelease(name);
+    }
+    
+    if(primary->getCameraEntityCount() > 0) {
+        Camera *camera = engine->getCameraComponent(primary->getCameraEntities()[0]);
+        name = JSStringCreateWithUTF8CString("fov");
+        JSValueRef fov = JSValueMakeNumber(ctx, camera->getFieldOfViewInDegrees(Camera::Fov::HORIZONTAL));
+        JSObjectSetProperty(ctx, data, name, fov, kJSPropertyAttributeNone, nullptr);
         JSStringRelease(name);
     }
         
@@ -802,13 +817,30 @@ JSCALLBACK(addCamera){
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, camera, sizeof(camera), nullptr, nullptr, nullptr);
 }
 
+JSCALLBACK(updateLight) {
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    Entity entity = Entity::import(id);
+    
+    LightManager &lightMgr = renderer->getEngine()->getLightManager();
+    auto instance = lightMgr.getInstance(entity);
+    
+    TransformManager &tcm = renderer->getEngine()->getTransformManager();
+    const math::mat4f transform = tcm.getWorldTransform(tcm.getInstance(entity));
+    
+    float intensity = JSValueToNumber(ctx, arguments[1], nullptr);
+    lightMgr.setDirection(instance, {transform[0][2], transform[1][2], -transform[2][2]});
+    lightMgr.setIntensity(instance, intensity);
+    
+    return nullptr;
+}
+
 JSCALLBACK(updateCamera){
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
     
     auto camera = renderer->getEngine()->getCameraComponent(entity);
     
-    if(argumentCount <= 3) {
+    if(argumentCount < 4) {
         const double width = JSValueToNumber(ctx, arguments[1], nullptr);
         const double height = JSValueToNumber(ctx, arguments[2], nullptr);
         
@@ -821,11 +853,11 @@ JSCALLBACK(updateCamera){
         
         camera->setProjection(Camera::Projection::ORTHO, left, right, bottom, top, near, far);
     } else {
-        const double fov = JSValueToNumber(ctx, arguments[1], nullptr);
+//        const double fov = JSValueToNumber(ctx, arguments[1], nullptr);
         const double aspect = JSValueToNumber(ctx, arguments[2], nullptr);
-        const double far = JSValueToNumber(ctx, arguments[3], nullptr);
+        const double scale = JSValueToNumber(ctx, arguments[3], nullptr);
         
-        camera->setProjection(fov, aspect, .1, far);
+        camera->setScaling({scale, scale * aspect});
     }
     
     return arguments[0];
@@ -926,7 +958,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     
 //    view->setBlendMode(BlendMode::TRANSLUCENT);
 //    view->setPostProcessingEnabled(true);
-    view->setStencilBufferEnabled(false);
+    view->setStencilBufferEnabled(true);
     
     view->setAntiAliasing(AntiAliasing::NONE);
     view->setDithering(Dithering::NONE);
@@ -962,6 +994,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("playAudio", playAudio, globalObject);
     registerNativeFunction("loadModel", loadModel, globalObject);
     registerNativeFunction("addModel", addModel, globalObject);
+    registerNativeFunction("updateLight", updateLight, globalObject);
     
 #ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);

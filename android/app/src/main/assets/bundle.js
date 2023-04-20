@@ -240,6 +240,7 @@ class Camera extends Component {
         this.scale = 1
         this.width = 1
         this.height = 1
+        this.fov = -1
         !ignoreNative && globalThis.addCamera(node.id())
 
         let scene = node
@@ -255,10 +256,15 @@ class Camera extends Component {
     }
 
     onResizeView(width, height) {
-        let scale = this.scale
         this.width = width
         this.height = height
-        globalThis.updateCamera(this.node.id(), width * scale, height * scale)
+        let scale = this.scale
+
+        if(this.fov < 0) {
+            globalThis.updateCamera(this.node.id(), width * scale, height * scale)
+        } else {
+            globalThis.updateCamera(this.node.id(), this.fov, width / height, scale)
+        }
     }
 
     setScale(scale) {
@@ -311,28 +317,31 @@ class Scene extends FNode {
     }
 
     importNodesFromModel(data) {
-        let { id, relation } = data
+        let { nodes, relations, fov } = data
         let idMap = {}
         let nameMap = {}
-        for (let i in id) {
-            let node = new FNode(id[i])
-            idMap[id[i]] = node
+        for (let i in nodes) {
+            let node = new FNode(nodes[i])
+            idMap[nodes[i]] = node
             nameMap[i] = node
             node.fetchLocalTransform()
         }
 
-        for (let i in relation) {
-            let parent = idMap[relation[i]]
+        for (let i in relations) {
+            let parent = idMap[relations[i]]
             let child = nameMap[i]
             parent.children.push(child)
             child.parent = parent
         }
 
-        let root = nameMap['Scene']
+        let root = nameMap.Scene
         this.children.push(root)
         root.parent = this
 
-        new Camera(nameMap['Camera_Orientation'], true)
+        new Camera(nameMap.Camera_Orientation, true).fov = fov
+
+        let light = nameMap.Light_Orientation
+        globalThis.updateLight(light.id(), 100000)
 
         return new ModelSimple(root, data)
     }
@@ -1236,8 +1245,8 @@ var resizeView = function (width, height) {
     width = fit_width ? ZOOM : Math.round(ZOOM * aspect)
     height = fit_width ? Math.round(ZOOM / aspect) : ZOOM
 
-    // uiRoot.onResizeView(width, height)
-    // gameRoot.onResizeView(width, height)
+    uiRoot.onResizeView(width, height)
+    gameRoot.onResizeView(width, height)
 
     skipRender = true
 }
@@ -1283,8 +1292,8 @@ var update = function (dt) {
     let [scene1, cam1] = gameRoot.nativeScene
     let [scene2, cam2] = uiRoot.nativeScene
     globalThis.render(
-        scene1, cam1
-        // scene2, cam2
+        scene1, cam1,
+        scene2, cam2
     )
 }
 
