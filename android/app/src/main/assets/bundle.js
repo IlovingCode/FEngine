@@ -260,7 +260,7 @@ class Camera extends Component {
         this.height = height
         let scale = this.scale
 
-        if(this.fov < 0) {
+        if (this.fov < 0) {
             globalThis.updateCamera(this.node.id(), width * scale, height * scale)
         } else {
             globalThis.updateCamera(this.node.id(), this.fov, width / height, scale)
@@ -278,6 +278,7 @@ class Scene extends FNode {
         super(-1)
 
         this.camera = null
+        this.light = null
         this.textures = null
         this.font = null
         this.transformBuffer = null
@@ -316,7 +317,10 @@ class Scene extends FNode {
         bound.alignChildren()
     }
 
-    importNodesFromModel(data) {
+    importNodesFromModel(model) {
+        let data = { nodes: {}, relations: {}, animations: {}, animationDurations: {} }
+        let native = globalThis.addModel(model, this.nativeScene[0], data)
+
         let { nodes, relations, fov } = data
         let idMap = {}
         let nameMap = {}
@@ -338,12 +342,14 @@ class Scene extends FNode {
         this.children.push(root)
         root.parent = this
 
-        new Camera(nameMap.Camera_Orientation, true).fov = fov
+        if (nameMap.Camera_Orientation) new Camera(nameMap.Camera_Orientation, true).fov = fov
+        this.light = nameMap.Light_Orientation
 
-        let light = nameMap.Light_Orientation
-        globalThis.updateLight(light.id(), 100000)
+        let modelSimple = new ModelSimple(root, data)
+        modelSimple.native = native
+        modelSimple.nameMap = nameMap
 
-        return new ModelSimple(root, data)
+        return modelSimple
     }
 
     sendUpdateTransform(list) {
@@ -1218,11 +1224,34 @@ class ProgressCircle extends Component {
 }
 
 class ModelSimple extends Component {
-    constructor(node, data) {
+    constructor(node, data, nameMap) {
         super(node)
 
         this.data = data
+        this.nameMap = null
         this.native = null
+
+        this.currentAnim = -1
+        this.animDuration = -1
+        this.timer = -1
+        this.loopAnim = false
+    }
+
+    getNodeByName(name) { return this.nameMap[name] }
+
+    play(name, isLoop = false) {
+        this.currentAnim = this.data.animations[name]
+        this.animDuration = this.data.animationDurations[name]
+        this.timer = 0
+        this.loopAnim = isLoop
+    }
+
+    update(dt) {
+        if (this.currentAnim < 0) return
+        if (!this.loopAnim && this.timer > this.animDuration) return
+
+        this.timer += dt
+        globalThis.playAnimation(this.native, this.currentAnim, this.timer)
     }
 }
 

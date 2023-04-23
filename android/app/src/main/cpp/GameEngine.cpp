@@ -45,6 +45,7 @@
 #include <gltfio/TextureProvider.h>
 #include <gltfio/materials/uberarchive.h>
 #include <gltfio/math.h>
+#include <gltfio/Animator.h>
 
 #include <JavaScriptCore/JavaScript.h>
 #include "Object_C_Interface.h"
@@ -124,6 +125,20 @@ JSCALLBACK(beginScene){
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, scene, sizeof(scene), nullptr, nullptr, nullptr);
 }
 
+JSCALLBACK(playAnimation) {
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void* buffer = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Animator *animator = static_cast<FilamentInstance*>(buffer)->getAnimator();
+    
+    size_t id = JSValueToNumber(ctx, arguments[1], nullptr);
+    float time = JSValueToNumber(ctx, arguments[2], nullptr);
+    
+    animator->applyAnimation(id, time);
+    animator->updateBoneMatrices();
+    
+    return arguments[0];
+}
+
 JSCALLBACK(addModel) {
     JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
     void* buffer = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
@@ -141,6 +156,14 @@ JSCALLBACK(addModel) {
     
     name = JSStringCreateWithUTF8CString("relations");
     JSObjectRef relations = JSValueToObject(ctx, JSObjectGetProperty(ctx, data, name, nullptr), nullptr);
+    JSStringRelease(name);
+    
+    name = JSStringCreateWithUTF8CString("animations");
+    JSObjectRef animations = JSValueToObject(ctx, JSObjectGetProperty(ctx, data, name, nullptr), nullptr);
+    JSStringRelease(name);
+    
+    name = JSStringCreateWithUTF8CString("animationDurations");
+    JSObjectRef animationDurations = JSValueToObject(ctx, JSObjectGetProperty(ctx, data, name, nullptr), nullptr);
     JSStringRelease(name);
     
     Engine *engine = renderer->getEngine();
@@ -174,6 +197,18 @@ JSCALLBACK(addModel) {
         name = JSStringCreateWithUTF8CString("fov");
         JSValueRef fov = JSValueMakeNumber(ctx, camera->getFieldOfViewInDegrees(Camera::Fov::HORIZONTAL));
         JSObjectSetProperty(ctx, data, name, fov, kJSPropertyAttributeNone, nullptr);
+        JSStringRelease(name);
+    }
+    
+    Animator *animator = bundle->getAnimator();
+    count = animator->getAnimationCount();
+    for(size_t i = 0; i < count; i++) {
+        name = JSStringCreateWithUTF8CString(animator->getAnimationName(i));
+        JSValueRef id = JSValueMakeNumber(ctx, i);
+        JSValueRef duration = JSValueMakeNumber(ctx, animator->getAnimationDuration(i));
+        JSObjectSetProperty(ctx, animations, name, id, kJSPropertyAttributeNone, nullptr);
+        JSObjectSetProperty(ctx, animationDurations, name, duration, kJSPropertyAttributeNone, nullptr);
+        
         JSStringRelease(name);
     }
         
@@ -800,7 +835,7 @@ JSCALLBACK(updateTransforms){
         
         tcm.setTransform(tcm.getInstance(Entity::import(id)),
             math::mat4f::translation(pos) *
-            math::mat4f::eulerZYX(rot.z, rot.y, rot.x) *
+            math::mat4f::eulerZYX(rot.x, rot.y, rot.z) *
             math::mat4f::scaling(scl));
     }
     
@@ -995,6 +1030,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("loadModel", loadModel, globalObject);
     registerNativeFunction("addModel", addModel, globalObject);
     registerNativeFunction("updateLight", updateLight, globalObject);
+    registerNativeFunction("playAnimation", playAnimation, globalObject);
     
 #ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);
