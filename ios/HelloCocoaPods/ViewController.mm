@@ -57,7 +57,6 @@ bool playNativeAudio(void *self, const char* parameter)
     // Give our View a starting size based on the drawable size.
     [self mtkView:mtkView drawableSizeWillChange:mtkView.drawableSize];
     
-    
     _audioPlayers = @[
         [AVAudioPlayer alloc],
         [AVAudioPlayer alloc],

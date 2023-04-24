@@ -24,42 +24,58 @@ gameRoot.textures = {
 }
 
 class GameController extends Component {
-    constructor(node, textures) {
+    constructor(node, textures, character) {
         super(node)
 
-        this.timer = 0
-        this.origin = Vec2.ZERO.clone()
-        this.dir = Vec2.ZERO.clone()
-        gameRoot.interactables.push(this)
+        // this.timer = 0
+        // this.origin = Vec2.ZERO.clone()
+        // this.dir = Vec2.ZERO.clone()
+        // gameRoot.interactables.push(this)
 
-        let { bg0, bg1, bg2, bg3 } = textures
+        // let { bg0, bg1, bg2, bg3 } = textures
 
-        let y = 0
-        let child = node.addChild()
-        child.position.y = y
-        new BoundBox2D(child, new Vec2(bg0.width, bg0.height), Vec2.ZERO.clone())
-        new SpriteSimple(child, bg0)
-        y += bg0.height
+        // let y = 0
+        // let child = node.addChild()
+        // child.position.y = y
+        // new BoundBox2D(child, new Vec2(bg0.width, bg0.height), Vec2.ZERO.clone())
+        // new SpriteSimple(child, bg0)
+        // y += bg0.height
 
-        child = node.addChild()
-        child.position.y = y
-        new BoundBox2D(child, new Vec2(bg1.width, bg1.height), Vec2.ZERO.clone())
-        new SpriteSimple(child, bg1)
-        y += bg1.height
+        // child = node.addChild()
+        // child.position.y = y
+        // new BoundBox2D(child, new Vec2(bg1.width, bg1.height), Vec2.ZERO.clone())
+        // new SpriteSimple(child, bg1)
+        // y += bg1.height
 
-        child = node.addChild()
-        child.position.y = y
-        new BoundBox2D(child, new Vec2(bg2.width, bg2.height), Vec2.ZERO.clone())
-        new SpriteSimple(child, bg2)
-        y += bg2.height
+        // child = node.addChild()
+        // child.position.y = y
+        // new BoundBox2D(child, new Vec2(bg2.width, bg2.height), Vec2.ZERO.clone())
+        // new SpriteSimple(child, bg2)
+        // y += bg2.height
 
-        child = node.addChild()
-        child.position.y = y
-        new BoundBox2D(child, new Vec2(bg3.width, bg3.height), Vec2.ZERO.clone())
-        new SpriteSimple(child, bg3)
+        // child = node.addChild()
+        // child.position.y = y
+        // new BoundBox2D(child, new Vec2(bg3.width, bg3.height), Vec2.ZERO.clone())
+        // new SpriteSimple(child, bg3)
 
-        this.height = y + bg3.height
-        this.width = bg0.width
+        // this.height = y + bg3.height
+        // this.width = bg0.width
+
+        this.character = character
+        this.angle = 0
+    }
+
+    update(dt) {
+        this.angle += dt * .3
+
+        let r = 8
+        let node = this.character
+
+        node.position.x = Math.cos(this.angle) * r
+        node.position.z = Math.sin(this.angle) * r
+        node.rotation.y = -this.angle
+
+        node.isDirty = true
     }
 
     clear() {
@@ -74,8 +90,13 @@ class GameController extends Component {
             return
         }
 
-        let dir = this.dir.set(x - origin.x, y - origin.y)
+        this.onDirection(this.dir.set(x - origin.x, y - origin.y))
+    }
+
+    onDirection(dir) {
         let length = Math.min(Math.sqrt(dir.lengthSqr()), 5)
+        if (length <= 0) return
+
         dir.normalize()
 
         let { width, height, scale } = gameRoot.camera
@@ -97,19 +118,28 @@ class GameController extends Component {
 
         node.isDirty = true
     }
-
-    update(dt) {
-    }
 }
 
 void function init() {
     let { textures } = gameRoot.init()
 
-    let node = gameRoot.addChild()
-    node.position.z = 1
-    new Camera(node).scale = .5
+    // let node = gameRoot.addChild()
+    // let pos = node.position
+    // pos.z = 1
+    // pos.x = textures.bg0.width * .25
+    // pos.y = textures.bg0.height * .35
+    // new Camera(node).scale = .5
+
+    let model = globalThis.loadModel('amongus.glb')
+    let modelview = gameRoot.importNodesFromModel(model)
+    console.log(JSON.stringify(modelview.data))
+
+    gameRoot.light && globalThis.updateLight(gameRoot.light.id(), 300000)
+    gameRoot.camera.scale = .5
+
+    modelview.play('ArmatureAction', true)
 
     node = gameRoot.addChild()
-    new GameController(node, textures)
+    new GameController(node, textures, modelview.getNodeByName('Armature'))
 }();
 

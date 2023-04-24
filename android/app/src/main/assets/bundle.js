@@ -158,6 +158,30 @@ class FNode {
         for (let i of this.children) i.onDirty()
     }
 
+    fetchLocalTransform() {
+        let { position, rotation, scale } = this
+
+        if (this.isDirty) {
+            let transform = globalThis.getLocalTransform(this.native)
+
+            position.x = transform[1]
+            position.y = transform[2]
+            position.z = transform[3]
+
+            scale.x = transform[4]
+            scale.y = transform[5]
+            scale.z = transform[6]
+
+            rotation.x = transform[7]
+            rotation.y = transform[8]
+            rotation.z = transform[9]
+
+            this.isDirty = false
+        }
+
+        return position
+    }
+
     updateWorld() {
         let worldPos = this.worldPosition
 
@@ -210,13 +234,14 @@ class Component {
 }
 
 class Camera extends Component {
-    constructor(node) {
+    constructor(node, ignoreNative = false) {
         super(node)
 
         this.scale = 1
         this.width = 1
         this.height = 1
-        globalThis.addCamera(node.id())
+        this.fov = -1
+        !ignoreNative && globalThis.addCamera(node.id())
 
         let scene = node
         while (scene.id() >= 0) scene = scene.parent
@@ -231,10 +256,15 @@ class Camera extends Component {
     }
 
     onResizeView(width, height) {
-        let scale = this.scale
         this.width = width
         this.height = height
-        globalThis.updateCamera(this.node.id(), width * scale, height * scale)
+        let scale = this.scale
+
+        if (this.fov < 0) {
+            globalThis.updateCamera(this.node.id(), width * scale, height * scale)
+        } else {
+            globalThis.updateCamera(this.node.id(), this.fov, width / height, scale)
+        }
     }
 
     setScale(scale) {
@@ -248,6 +278,7 @@ class Scene extends FNode {
         super(-1)
 
         this.camera = null
+        this.light = null
         this.textures = null
         this.font = null
         this.transformBuffer = null
@@ -284,6 +315,41 @@ class Scene extends FNode {
         if (!bound) return
         bound.updateSize(width, height)
         bound.alignChildren()
+    }
+
+    importNodesFromModel(model) {
+        let data = { nodes: {}, relations: {}, animations: {}, animationDurations: {} }
+        let native = globalThis.addModel(model, this.nativeScene[0], data)
+
+        let { nodes, relations, fov } = data
+        let idMap = {}
+        let nameMap = {}
+        for (let i in nodes) {
+            let node = new FNode(nodes[i])
+            idMap[nodes[i]] = node
+            nameMap[i] = node
+            node.fetchLocalTransform()
+        }
+
+        for (let i in relations) {
+            let parent = idMap[relations[i]]
+            let child = nameMap[i]
+            parent.children.push(child)
+            child.parent = parent
+        }
+
+        let root = nameMap.Scene
+        this.children.push(root)
+        root.parent = this
+
+        if (nameMap.Camera_Orientation) new Camera(nameMap.Camera_Orientation, true).fov = fov
+        this.light = nameMap.Light_Orientation
+
+        let modelSimple = new ModelSimple(root, data)
+        modelSimple.native = native
+        modelSimple.nameMap = nameMap
+
+        return modelSimple
     }
 
     sendUpdateTransform(list) {
@@ -1157,6 +1223,38 @@ class ProgressCircle extends Component {
     get() { return this.value }
 }
 
+class ModelSimple extends Component {
+    constructor(node, data, nameMap) {
+        super(node)
+
+        this.data = data
+        this.nameMap = null
+        this.native = null
+
+        this.currentAnim = -1
+        this.animDuration = -1
+        this.timer = -1
+        this.loopAnim = false
+    }
+
+    getNodeByName(name) { return this.nameMap[name] }
+
+    play(name, isLoop = false) {
+        this.currentAnim = this.data.animations[name]
+        this.animDuration = this.data.animationDurations[name]
+        this.timer = 0
+        this.loopAnim = isLoop
+    }
+
+    update(dt) {
+        if (this.currentAnim < 0) return
+        if (!this.loopAnim && this.timer > this.animDuration) return
+
+        this.timer += dt
+        globalThis.playAnimation(this.native, this.currentAnim, this.timer)
+    }
+}
+
 var input = {
     x: 0, y: 0,
     prevX: 0, prevY: 0,
@@ -1165,6 +1263,7 @@ var input = {
 }
 
 const bbox = new Float32Array(6)
+let skipRender = false
 
 var resizeView = function (width, height) {
     let fit_width = width * designHeight < height * designWidth
@@ -1177,6 +1276,8 @@ var resizeView = function (width, height) {
 
     uiRoot.onResizeView(width, height)
     gameRoot.onResizeView(width, height)
+
+    skipRender = true
 }
 
 var checkInput = function (first, second) {
@@ -1212,11 +1313,17 @@ var update = function (dt) {
         uiRoot.update(dt),
         gameRoot.update(dt))
 
+    if (skipRender) {
+        skipRender = false
+        return
+    }
+
     let [scene1, cam1] = gameRoot.nativeScene
     let [scene2, cam2] = uiRoot.nativeScene
     globalThis.render(
         scene1, cam1,
-        scene2, cam2)
+        scene2, cam2
+    )
 }
 
 var buildFont = function (font) {

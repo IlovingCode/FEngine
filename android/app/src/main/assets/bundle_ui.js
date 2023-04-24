@@ -116,39 +116,39 @@ void function init() {
 
     node = uiRoot.addChild()
     bound = new BoundBox2D(node, new Vec2(300, 300))
-    new SpriteSimple(node, textures.tiny)
+    new SpriteSimple(node, textures.tiny).setEnable(false)
     bound.setAlignment(0, -1, 0, 0, 10, 0)
 
     node = node.addChild()
     bound = new BoundBox2D(node, new Vec2(250, 250))
-    new SpriteSimple(node, textures.tiny, true)
-    let scrollView = new ScrollView(node)
+    // new SpriteSimple(node, textures.tiny, true)
+    // let scrollView = new ScrollView(node)
 
-    node = node.addChild()
-    bound = new BoundBox2D(node, new Vec2(250, 100))
-    new Layout(node, 10, 10, 10, 10, 10, 10)
+    // node = node.addChild()
+    // bound = new BoundBox2D(node, new Vec2(250, 100))
+    // new Layout(node, 10, 10, 10, 10, 10, 10)
 
-    scrollView.setContent(node)
+    // scrollView.setContent(node)
 
-    let content = 'QqWwEeRrTtYyUuIiOoPpAaSsDdFfGgHhJjKkLlZzXxCcVvBbNnMm'
+    // let content = 'QqWwEeRrTtYyUuIiOoPpAaSsDdFfGgHhJjKkLlZzXxCcVvBbNnMm'
 
-    for (let i = 0; i < 200; i++) {
-        child = node.addChild()
-        bound = new BoundBox2D(child, new Vec2(50, 50))
-        new SpriteSimple(child, textures.red)
-        new Button(child, scrollView)
+    // for (let i = 0; i < 200; i++) {
+    //     child = node.addChild()
+    //     bound = new BoundBox2D(child, new Vec2(50, 50))
+    //     new SpriteSimple(child, textures.red)
+    //     new Button(child, scrollView)
 
-        let child1 = child.addChild()
-        child1.position.set(0, 10)
-        bound = new BoundBox2D(child1, new Vec2(100, 100))
-        new TextSimple(child1, font, 20, .5, 3).setText((i + 1).toString())
+    //     let child1 = child.addChild()
+    //     child1.position.set(0, 10)
+    //     bound = new BoundBox2D(child1, new Vec2(100, 100))
+    //     new TextSimple(child1, font, 20, .5, 3).setText((i + 1).toString())
 
-        child1 = child.addChild()
-        child1.position.set(0, -10)
-        let id = i % (content.length - 3)
-        bound = new BoundBox2D(child1, new Vec2(100, 100))
-        new TextSimple(child1, font, 25, .5, 3).setText(content.substring(id, id + 3))
-    }
+    //     child1 = child.addChild()
+    //     child1.position.set(0, -10)
+    //     let id = i % (content.length - 3)
+    //     bound = new BoundBox2D(child1, new Vec2(100, 100))
+    //     new TextSimple(child1, font, 25, .5, 3).setText(content.substring(id, id + 3))
+    // }
 
     node = uiRoot.addChild()
     node.position.set(0, 250)
@@ -171,10 +171,5 @@ void function init() {
         .setText('0')
         .setColor(new Vec4(1, 1, 0, 1))
     bound.setAlignment(-1, 0, 0, 50, 0, 0)
-
-    node = uiRoot.addChild()
-    bound = new BoundBox2D(node, new Vec2(300, 300))
-    new SpriteSimple(node, font)
-    bound.setAlignment(0, 1, 0, 0, 0, 10)
 }();
 
