@@ -12,7 +12,9 @@
 # ./mipgen -f ktx2 --compression=uastc -m 1 progress_fill.png   "../android/app/src/main/assets/progress_fill.ktx2"
 # ./mipgen -f ktx2 --compression=uastc -m 1 progress_bg.png     "../android/app/src/main/assets/progress_bg.ktx2"
 
-./mipgen -f ktx2 --compression=uastc -m 1 bg0.png   "../android/app/src/main/assets/bg0.ktx2"
-./mipgen -f ktx2 --compression=uastc -m 1 bg1.png   "../android/app/src/main/assets/bg1.ktx2"
-./mipgen -f ktx2 --compression=uastc -m 1 bg2.png   "../android/app/src/main/assets/bg2.ktx2"
-./mipgen -f ktx2 --compression=uastc -m 1 bg3.png   "../android/app/src/main/assets/bg3.ktx2"
+# ./mipgen -f ktx2 --compression=uastc -m 1 bg0.png   "../android/app/src/main/assets/bg0.ktx2"
+# ./mipgen -f ktx2 --compression=uastc -m 1 bg1.png   "../android/app/src/main/assets/bg1.ktx2"
+# ./mipgen -f ktx2 --compression=uastc -m 1 bg2.png   "../android/app/src/main/assets/bg2.ktx2"
+# ./mipgen -f ktx2 --compression=uastc -m 1 bg3.png   "../android/app/src/main/assets/bg3.ktx2"
+
+./cmgen --deploy="../android/app/src/main/assets/env" --format=ktx default_ibl.png

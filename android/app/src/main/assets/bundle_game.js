@@ -1,4 +1,5 @@
 const gameRoot = new Scene
+const LIGHT_SCALE = 30000
 
 gameRoot.textures = {
     bg0: {
@@ -20,7 +21,7 @@ gameRoot.textures = {
         width: 1024,
         height: 768,
         native: null
-    },
+    }
 }
 
 class GameController extends Component {
@@ -134,12 +135,18 @@ void function init() {
     let modelview = gameRoot.importNodesFromModel(model)
     console.log(JSON.stringify(modelview.data))
 
-    gameRoot.light && globalThis.updateLight(gameRoot.light.id(), 300000)
+    gameRoot.light && globalThis.updateLight(gameRoot.light.id(), modelview.data.lightIntensity * LIGHT_SCALE)
     gameRoot.camera.scale = .5
 
     modelview.play('ArmatureAction', true)
 
     node = gameRoot.addChild()
     new GameController(node, textures, modelview.getNodeByName('Armature'))
+
+    gameRoot.setEnvironment({
+        skybox: 'env/env_skybox.ktx',
+        ibl: 'env/env_ibl.ktx',
+        indirect_intensity: LIGHT_SCALE,
+    })
 }();
 
