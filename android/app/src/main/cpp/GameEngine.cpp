@@ -950,7 +950,6 @@ JSCALLBACK(updateLight) {
     
     TransformManager &tcm = renderer->getEngine()->getTransformManager();
     const math::mat4f transform = tcm.getWorldTransform(tcm.getInstance(entity));
-    cout << lightMgr.getIntensity(instance) << endl;
     
     float intensity = JSValueToNumber(ctx, arguments[1], nullptr);
     lightMgr.setDirection(instance, {transform[0][2], transform[1][2], -transform[2][2]});
