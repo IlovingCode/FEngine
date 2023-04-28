@@ -16,6 +16,8 @@
 
 // These are all C++ headers, so make sure the type of this file is Objective-C++ source.
 #include <ktxreader/Ktx2Reader.h>
+#include <ktxreader/Ktx1Reader.h>
+#include <image/Ktx1Bundle.h>
 
 #include <filament/Engine.h>
 #include <filament/SwapChain.h>
@@ -33,7 +35,8 @@
 #include <filament/LightManager.h>
 #include <filament/TextureSampler.h>
 #include <filament/Texture.h>
-#include <filament/ColorGrading.h>
+#include <filament/Skybox.h>
+#include <filament/IndirectLight.h>
 
 #include <utils/Entity.h>
 #include <utils/Path.h>
@@ -91,6 +94,10 @@ GameEngine::~GameEngine(){
     engine->destroy(swapChain);
     engine->destroy(&engine);
     
+    assetLoader->getMaterialProvider().destroyMaterials();
+    delete &(assetLoader->getMaterialProvider());
+    AssetLoader::destroy(&assetLoader);
+    
 //    JSContextGroupRef contextGroup = JSContextGetGroup(globalContext);
     JSGlobalContextRelease(globalContext);
 //    JSContextGroupRelease(contextGroup);
@@ -137,6 +144,71 @@ JSCALLBACK(playAnimation) {
     animator->updateBoneMatrices();
     
     return arguments[0];
+}
+
+JSCALLBACK(setEnvironment) {
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void *buffer = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Scene *scene = static_cast<Scene*>(buffer);
+    Engine *engine = renderer->getEngine();
+    
+    {
+        string filename = JSValueToStdString(ctx, arguments[1]);
+        const void* data = nullptr;
+        size_t size = 0;
+        
+#ifdef ANDROID
+        AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
+        data = AAsset_getBuffer(asset);
+        size = AAsset_getLength(asset);
+#else
+        ifstream file(assets + filename, ios::binary);
+        const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
+        data = stream.data();
+        size = stream.size();
+        file.close();
+#endif
+        
+        image::Ktx1Bundle *bundle =
+        new image::Ktx1Bundle(static_cast<const uint8_t*>(data),static_cast<uint32_t>(size));
+        
+        Texture *texture = ktxreader::Ktx1Reader::createTexture(engine, bundle, true);
+        Skybox *skybox = Skybox::Builder().environment(texture).build(*engine);
+        scene->setSkybox(skybox);
+    }
+    {
+        string filename = JSValueToStdString(ctx, arguments[2]);
+        const void* data = nullptr;
+        size_t size = 0;
+        
+#ifdef ANDROID
+        AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
+        data = AAsset_getBuffer(asset);
+        size = AAsset_getLength(asset);
+#else
+        ifstream file(assets + filename, ios::binary);
+        const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
+        data = stream.data();
+        size = stream.size();
+        file.close();
+#endif
+        
+        image::Ktx1Bundle *bundle =
+        new image::Ktx1Bundle(static_cast<const uint8_t*>(data),static_cast<uint32_t>(size));
+        Texture *texture = ktxreader::Ktx1Reader::createTexture(engine, bundle, true);
+        
+        math::float3 harmonics[9];
+        bundle->getSphericalHarmonics(harmonics);
+        IndirectLight *indirectLight = IndirectLight::Builder()
+            .reflections(texture)
+            .irradiance(3, harmonics)
+            .intensity(JSValueToNumber(ctx, arguments[3], nullptr))
+            .build(*engine);
+        
+        scene->setIndirectLight(indirectLight);
+    }
+    
+    return arguments[2];
 }
 
 JSCALLBACK(addModel) {
@@ -192,11 +264,25 @@ JSCALLBACK(addModel) {
         JSStringRelease(name);
     }
     
+    IndirectLight *indirect = IndirectLight::Builder()
+        .intensity(300000.f)
+        .build(*engine);
+    scene->setIndirectLight(indirect);
+    
     if(primary->getCameraEntityCount() > 0) {
         Camera *camera = engine->getCameraComponent(primary->getCameraEntities()[0]);
         name = JSStringCreateWithUTF8CString("fov");
         JSValueRef fov = JSValueMakeNumber(ctx, camera->getFieldOfViewInDegrees(Camera::Fov::HORIZONTAL));
         JSObjectSetProperty(ctx, data, name, fov, kJSPropertyAttributeNone, nullptr);
+        JSStringRelease(name);
+    }
+    
+    if(primary->getLightEntityCount() > 0) {
+        LightManager &lightMgr = engine->getLightManager();
+        
+        name = JSStringCreateWithUTF8CString("lightIntensity");
+        JSValueRef intensity = JSValueMakeNumber(ctx, lightMgr.getIntensity(lightMgr.getInstance(primary->getLightEntities()[0])));
+        JSObjectSetProperty(ctx, data, name, intensity, kJSPropertyAttributeNone, nullptr);
         JSStringRelease(name);
     }
     
@@ -254,6 +340,7 @@ JSCALLBACK(loadModel) {
     const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
     data = stream.data();
     size = stream.size();
+    file.close();
 #endif
 
     FilamentAsset *bunble = assetLoader->createAsset(data, (uint32_t)size);
@@ -388,6 +475,7 @@ JSCALLBACK(loadImage) {
     const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
     data = stream.data();
     size = stream.size();
+    file.close();
 #endif
 
     ktxreader::Ktx2Reader reader(*renderer->getEngine());
@@ -550,6 +638,7 @@ JSCALLBACK(renderText) {
     ifstream file(assets + filename, ios::binary);
     const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
     data = stream.data();
+    file.close();
 #endif
     
     string word = JSValueToStdString(ctx, arguments[1]);
@@ -1031,6 +1120,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("addModel", addModel, globalObject);
     registerNativeFunction("updateLight", updateLight, globalObject);
     registerNativeFunction("playAnimation", playAnimation, globalObject);
+    registerNativeFunction("setEnvironment", setEnvironment, globalObject);
     
 #ifdef ANDROID
     AAsset* asset = AAssetManager_open(assetManager, "bundle.js", 0);

@@ -317,6 +317,11 @@ class Scene extends FNode {
         bound.alignChildren()
     }
 
+    setEnvironment(env) {
+        globalThis.setEnvironment(this.nativeScene[0],
+            env.skybox, env.ibl, env.indirect_intensity)
+    }
+
     importNodesFromModel(model) {
         let data = { nodes: {}, relations: {}, animations: {}, animationDurations: {} }
         let native = globalThis.addModel(model, this.nativeScene[0], data)
