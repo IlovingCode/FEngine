@@ -989,7 +989,7 @@ JSCALLBACK(updateCamera){
 
 JSCALLBACK(render){
     view->setBlendMode(BlendMode::OPAQUE);
-    view->setPostProcessingEnabled(false);
+    view->setPostProcessingEnabled(true);
     
     if (renderer->beginFrame(swapChain)) {
         for(size_t i = 0; i < argumentCount - 1; i += 2) {
@@ -1094,7 +1094,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
 //        .build(*engine);
 //    view->setColorGrading(cg);
     
-    renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = true});
+    renderer->setClearOptions({.clearColor={0.1, 0.125, 0.25, 1.0}, .clear = false});
     
     globalContext = JSGlobalContextCreate(nullptr);
     JSObjectRef globalObject = JSContextGetGlobalObject(globalContext);

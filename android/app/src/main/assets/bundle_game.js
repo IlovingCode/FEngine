@@ -1,5 +1,5 @@
 const gameRoot = new Scene
-const LIGHT_SCALE = 30000
+const LIGHT_SCALE = 20000
 
 gameRoot.textures = {
     bg0: {
@@ -133,7 +133,7 @@ void function init() {
 
     let model = globalThis.loadModel('amongus.glb')
     let modelview = gameRoot.importNodesFromModel(model)
-    console.log(JSON.stringify(modelview.data))
+    // console.log(JSON.stringify(modelview.data))
 
     gameRoot.light && globalThis.updateLight(gameRoot.light.id(), modelview.data.lightIntensity * LIGHT_SCALE)
     gameRoot.camera.scale = .5
