@@ -17,4 +17,5 @@
 # ./mipgen -f ktx2 --compression=uastc -m 1 bg2.png   "../android/app/src/main/assets/bg2.ktx2"
 # ./mipgen -f ktx2 --compression=uastc -m 1 bg3.png   "../android/app/src/main/assets/bg3.ktx2"
 
-./cmgen --deploy="../android/app/src/main/assets/env" --format=ktx default_ibl.png
+# ./cmgen --deploy="../android/app/src/main/assets/env" --format=ktx default_ibl.png
+./mipgen -f ktx2 --compression=uastc -m 1 "spine/owl.png"   "../android/app/src/main/assets/spine/owl.ktx2"

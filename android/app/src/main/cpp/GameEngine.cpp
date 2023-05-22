@@ -52,13 +52,15 @@
 
 #include <JavaScriptCore/JavaScript.h>
 #include "Object_C_Interface.h"
+
+#include "MyTextureLoader.cpp"
 #ifdef ANDROID
 #include <android/asset_manager.h>
 #else
 #include <iostream>
-#endif
 #include <fstream>
 #include <sstream>
+#endif
 
 #ifndef JSMACRO
     #define JSMACRO
@@ -116,6 +118,60 @@ string JSValueToStdString(JSContextRef context, JSValueRef jsValue) {
     return utf_string.compare("null") == 0 ? "" : utf_string;
 }
 
+const uint8_t* loadFile(string filename, size_t* size) {
+    uint8_t* data = nullptr;
+    
+#ifdef ANDROID
+    AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
+    data = AAsset_getBuffer(asset);
+    size = AAsset_getLength(asset);
+    AAsset_close(asset);
+#else
+    ifstream file(assets + filename, ios::binary | ios::ate);
+    *size = file.tellg();
+    data = new uint8_t [*size];
+    file.seekg (0, ios::beg);
+    file.read ((char*)data, *size);
+    file.close();
+#endif
+    
+    return data;
+}
+
+Texture* loadTexture(string filename) {
+    size_t size = 0;
+    const uint8_t* data = loadFile(filename, &size);
+
+    ktxreader::Ktx2Reader reader(*renderer->getEngine());
+
+    // Uncompressed formats are lower priority, so they get added last.
+    reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
+    reader.requestFormat(Texture::InternalFormat::RGBA8);
+
+    Texture* texture = reader.load(data, size, ktxreader::Ktx2Reader::TransferFunction::sRGB);
+    delete [] data;
+    
+    return texture;
+}
+
+void unloadTexture(Texture* texture) {
+    renderer->getEngine()->destroy(texture);
+}
+
+math::float3 eulerAngles(math::quatf q) {
+    math::quatf nq = normalize(q);
+    return math::float3 {
+        // roll (x-axis rotation)
+        (atan2(2.0f * (nq.y * nq.z + nq.w * nq.x),
+            nq.w * nq.w - nq.x * nq.x - nq.y * nq.y + nq.z * nq.z)),
+        // pitch (y-axis rotation)
+        (asin(-2.0f * (nq.x * nq.z - nq.w * nq.y))),
+        // yaw (z-axis rotation)
+        (atan2(2.0f * (nq.x * nq.y + nq.w * nq.z),
+            nq.w * nq.w + nq.x * nq.x - nq.y * nq.y - nq.z * nq.z))
+    };
+}
+
 JSCALLBACK(log){
     string str = "";
     for (uint8_t i = 0; i < argumentCount; i++) {
@@ -152,49 +208,26 @@ JSCALLBACK(setEnvironment) {
     Scene *scene = static_cast<Scene*>(buffer);
     Engine *engine = renderer->getEngine();
     
+    size_t size = 0;
+    const uint8_t* data = nullptr;
+    
     {
-        string filename = JSValueToStdString(ctx, arguments[1]);
-        const void* data = nullptr;
-        size_t size = 0;
-        
-#ifdef ANDROID
-        AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
-        data = AAsset_getBuffer(asset);
-        size = AAsset_getLength(asset);
-#else
-        ifstream file(assets + filename, ios::binary);
-        const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
-        data = stream.data();
-        size = stream.size();
-        file.close();
-#endif
+        data = loadFile(JSValueToStdString(ctx, arguments[1]), &size);
         
         image::Ktx1Bundle *bundle =
-        new image::Ktx1Bundle(static_cast<const uint8_t*>(data),static_cast<uint32_t>(size));
+        new image::Ktx1Bundle(data, static_cast<uint32_t>(size));
         
         Texture *texture = ktxreader::Ktx1Reader::createTexture(engine, bundle, true);
         Skybox *skybox = Skybox::Builder().environment(texture).build(*engine);
         scene->setSkybox(skybox);
+        
+        delete [] data;
     }
     {
-        string filename = JSValueToStdString(ctx, arguments[2]);
-        const void* data = nullptr;
-        size_t size = 0;
-        
-#ifdef ANDROID
-        AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
-        data = AAsset_getBuffer(asset);
-        size = AAsset_getLength(asset);
-#else
-        ifstream file(assets + filename, ios::binary);
-        const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
-        data = stream.data();
-        size = stream.size();
-        file.close();
-#endif
+        data = loadFile(JSValueToStdString(ctx, arguments[2]), &size);
         
         image::Ktx1Bundle *bundle =
-        new image::Ktx1Bundle(static_cast<const uint8_t*>(data),static_cast<uint32_t>(size));
+        new image::Ktx1Bundle(data, static_cast<uint32_t>(size));
         Texture *texture = ktxreader::Ktx1Reader::createTexture(engine, bundle, true);
         
         math::float3 harmonics[9];
@@ -206,9 +239,11 @@ JSCALLBACK(setEnvironment) {
             .build(*engine);
         
         scene->setIndirectLight(indirectLight);
+        
+        delete [] data;
     }
     
-    return arguments[2];
+    return arguments[0];
 }
 
 JSCALLBACK(addModel) {
@@ -327,24 +362,13 @@ JSCALLBACK(loadModel) {
     }
 
     // Load the glTF file.
-    string filename = JSValueToStdString(ctx, arguments[0]);
-    const uint8_t* data = nullptr;
     size_t size = 0;
+    const uint8_t* data = loadFile(JSValueToStdString(ctx, arguments[0]), &size);
 
-#ifdef ANDROID
-    AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
-    data = AAsset_getBuffer(asset);
-    size = AAsset_getLength(asset);
-#else
-    ifstream file(assets + filename, ios::binary);
-    const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
-    data = stream.data();
-    size = stream.size();
-    file.close();
-#endif
-
-    FilamentAsset *bunble = assetLoader->createAsset(data, (uint32_t)size);
+    FilamentAsset *bunble = assetLoader->createAsset(data, static_cast<uint32_t>(size));
     resourceLoader->loadResources(bunble);
+    
+    delete [] data;
     
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, bunble, sizeof(bunble), nullptr, nullptr, nullptr);
 }
@@ -379,20 +403,6 @@ JSCALLBACK(destroyEntity){
     EntityManager::get().destroy(e);
     
     return arguments[0];
-}
-
-math::float3 eulerAngles(math::quatf q) {
-    math::quatf nq = normalize(q);
-    return math::float3 {
-        // roll (x-axis rotation)
-        (atan2(2.0f * (nq.y * nq.z + nq.w * nq.x),
-            nq.w * nq.w - nq.x * nq.x - nq.y * nq.y + nq.z * nq.z)),
-        // pitch (y-axis rotation)
-        (asin(-2.0f * (nq.x * nq.z - nq.w * nq.y))),
-        // yaw (z-axis rotation)
-        (atan2(2.0f * (nq.x * nq.y + nq.w * nq.z),
-            nq.w * nq.w + nq.x * nq.x - nq.y * nq.y - nq.z * nq.z))
-    };
 }
 
 JSCALLBACK(getLocalTransform){
@@ -462,31 +472,41 @@ JSCALLBACK(getWorldTransform){
 }
 
 JSCALLBACK(loadImage) {
-    string filename = JSValueToStdString(ctx, arguments[0]);
-    const void* data = nullptr;
-    size_t size = 0;
-
-#ifdef ANDROID
-    AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
-    data = AAsset_getBuffer(asset);
-    size = AAsset_getLength(asset);
-#else
-    ifstream file(assets + filename, ios::binary);
-    const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
-    data = stream.data();
-    size = stream.size();
-    file.close();
-#endif
-
-    ktxreader::Ktx2Reader reader(*renderer->getEngine());
-
-    // Uncompressed formats are lower priority, so they get added last.
-    reader.requestFormat(Texture::InternalFormat::SRGB8_A8);
-    reader.requestFormat(Texture::InternalFormat::RGBA8);
-
-    Texture* texture = reader.load(data, size, ktxreader::Ktx2Reader::TransferFunction::sRGB);
+    Texture* texture = loadTexture(JSValueToStdString(ctx, arguments[0]));
     
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, texture, sizeof(texture), nullptr, nullptr, nullptr);
+}
+
+JSCALLBACK(loadSpine) {
+    // Load the json file.
+    string filename = JSValueToStdString(ctx, arguments[0]);
+
+    spine::TextureLoader* textureLoader = new spine::MyTextureLoader(loadTexture, unloadTexture);
+
+    spine::String path((filename + ".atlas").c_str(), true);
+    // Load the texture atlas
+    spine::Atlas *atlas = new spine::Atlas(path, textureLoader);
+    if (atlas->getPages().size() == 0) {
+        cout << "Failed to load atlas\n";
+        delete atlas;
+        exit(0);
+    }
+
+    path.own((filename + ".json").c_str());
+    // Load the skeleton data
+    spine::SkeletonJson json(atlas);
+    spine::SkeletonData *skeletonData = json.readSkeletonDataFile(path);
+    if (!skeletonData) {
+        cout << "Failed to load skeleton data\n";
+        delete atlas;
+        return nullptr;
+    }
+
+    return nullptr;
+}
+
+spine::SpineExtension *spine::getDefaultExtension() {
+    return new spine::MyExtension(loadFile);
 }
 
 IndexBuffer* getIndexBuffer() {
@@ -629,17 +649,8 @@ JSCALLBACK(playAudio) {
 }
 
 JSCALLBACK(renderText) {
-    string filename = JSValueToStdString(ctx, arguments[0]);
-    const unsigned char* data = nullptr;
-#ifdef ANDROID
-    AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
-    data = static_cast<const unsigned char *>(AAsset_getBuffer(asset));
-#else
-    ifstream file(assets + filename, ios::binary);
-    const auto stream = vector<uint8_t>((istreambuf_iterator<char>(file)), {});
-    data = stream.data();
-    file.close();
-#endif
+    size_t size = 0;
+    const uint8_t* data = loadFile(JSValueToStdString(ctx, arguments[0]), &size);
     
     string word = JSValueToStdString(ctx, arguments[1]);
     
@@ -650,7 +661,8 @@ JSCALLBACK(renderText) {
     
     /* prepare font */
     stbtt_fontinfo info;
-    if (!stbtt_InitFont(&info, data, 0)) return nullptr;
+    stbtt_InitFont(&info, data, 0);
+    delete [] data;
     
     int b_w = JSValueToNumber(ctx, arguments[3], nullptr); /* bitmap width */
     int b_h = JSValueToNumber(ctx, arguments[4], nullptr); /* bitmap height */
@@ -988,7 +1000,7 @@ JSCALLBACK(updateCamera){
 }
 
 JSCALLBACK(render){
-    view->setBlendMode(BlendMode::OPAQUE);
+    view->setBlendMode(filament::BlendMode::OPAQUE);
     view->setPostProcessingEnabled(true);
     
     if (renderer->beginFrame(swapChain)) {
@@ -1005,7 +1017,7 @@ JSCALLBACK(render){
             view->setCamera(camera);
             renderer->render(view);
             
-            view->setBlendMode(BlendMode::TRANSLUCENT);
+            view->setBlendMode(filament::BlendMode::TRANSLUCENT);
             view->setPostProcessingEnabled(true);
         }
         renderer->endFrame();
@@ -1117,6 +1129,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("render", render, globalObject);
     registerNativeFunction("playAudio", playAudio, globalObject);
     registerNativeFunction("loadModel", loadModel, globalObject);
+    registerNativeFunction("loadSpine", loadSpine, globalObject);
     registerNativeFunction("addModel", addModel, globalObject);
     registerNativeFunction("updateLight", updateLight, globalObject);
     registerNativeFunction("playAnimation", playAnimation, globalObject);

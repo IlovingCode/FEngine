@@ -22,6 +22,7 @@
 		AEB37A6E2997AB45009539B0 /* bakedText_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6B2997AB45009539B0 /* bakedText_ios.inc */; };
 		AEB37A6F2997AB45009539B0 /* bakedMask_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6C2997AB45009539B0 /* bakedMask_ios.inc */; };
 		AED07C8429B5268D003524B9 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AED07C8329B5268D003524B9 /* AVFAudio.framework */; };
+		AEF843602A0F996900752471 /* MyTextureLoader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AEF8435E2A0F996900752471 /* MyTextureLoader.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 		AEB37A6B2997AB45009539B0 /* bakedText_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedText_ios.inc; path = ../../android/app/src/main/cpp/bakedText_ios.inc; sourceTree = "<group>"; };
 		AEB37A6C2997AB45009539B0 /* bakedMask_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedMask_ios.inc; path = ../../android/app/src/main/cpp/bakedMask_ios.inc; sourceTree = "<group>"; };
 		AED07C8329B5268D003524B9 /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
+		AEF8435E2A0F996900752471 /* MyTextureLoader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MyTextureLoader.cpp; path = ../../android/app/src/main/cpp/MyTextureLoader.cpp; sourceTree = "<group>"; };
 		D8F6B088AA46E901D4C80A53 /* libPods-HelloCocoaPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HelloCocoaPods.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DBDD44F53C2D94EF626D2238 /* Pods-HelloCocoaPods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.debug.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -99,6 +101,7 @@
 				43C0903E24B7DCE8009D291E /* ViewController.h */,
 				43C0903F24B7DCE8009D291E /* ViewController.mm */,
 				AE27EE7E29C6D84000EC8F8A /* Object_C_Interface.h */,
+				AEF8435E2A0F996900752471 /* MyTextureLoader.cpp */,
 				AEB37A682997A561009539B0 /* GameEngine.cpp */,
 				AEB37A672997A561009539B0 /* GameEngine.hpp */,
 				AEB37A662997A4D0009539B0 /* stb_truetype.h */,
@@ -236,6 +239,7 @@
 				AEB37A6D2997AB45009539B0 /* bakedColor_ios.inc in Sources */,
 				AEB37A6F2997AB45009539B0 /* bakedMask_ios.inc in Sources */,
 				AEB37A692997A561009539B0 /* GameEngine.cpp in Sources */,
+				AEF843602A0F996900752471 /* MyTextureLoader.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -376,15 +380,57 @@
 			baseConfigurationReference = DBDD44F53C2D94EF626D2238 /* Pods-HelloCocoaPods.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 72TBPLDUQ4;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_ROOT}/Headers/Public\"",
+					"\"${PODS_ROOT}/Headers/Public/Filament\"",
+					"\"${PODS_ROOT}/../../android/app/libs/spine/include\"",
+				);
 				INFOPLIST_FILE = HelloCocoaPods/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = me.filament.HelloCocoaPod;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_ROOT}/Filament/lib/universal\"",
+					"\"${PODS_ROOT}/../../android/app/libs/spine/lib/arm64-v8a\"",
+				);
+				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-l\"backend\"",
+					"-l\"basis_transcoder\"",
+					"-l\"camutils\"",
+					"-l\"civetweb\"",
+					"-l\"dracodec\"",
+					"-l\"filabridge\"",
+					"-l\"filaflat\"",
+					"-l\"filamat\"",
+					"-l\"filament\"",
+					"-l\"filameshio\"",
+					"-l\"geometry\"",
+					"-l\"gltfio_core\"",
+					"-l\"ibl\"",
+					"-l\"image\"",
+					"-l\"ktxreader\"",
+					"-l\"meshoptimizer\"",
+					"-l\"shaders\"",
+					"-l\"smol-v\"",
+					"-l\"stb\"",
+					"-l\"uberarchive\"",
+					"-l\"uberzlib\"",
+					"-l\"utils\"",
+					"-l\"viewer\"",
+					"-l\"zstd\"",
+					"-l\"spine-cpp\"",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = me.filament.HelloCocoaPods;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -395,15 +441,57 @@
 			baseConfigurationReference = 9B0B8E3424AB80B4FB0F5FF1 /* Pods-HelloCocoaPods.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 72TBPLDUQ4;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_ROOT}/Headers/Public\"",
+					"\"${PODS_ROOT}/Headers/Public/Filament\"",
+					"\"${PODS_ROOT}/../../android/app/libs/spine/include\"",
+				);
 				INFOPLIST_FILE = HelloCocoaPods/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = me.filament.HelloCocoaPod;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"${PODS_ROOT}/Filament/lib/universal\"",
+					"\"${PODS_ROOT}/../../android/app/libs/spine/lib/arm64-v8a\"",
+				);
+				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-l\"backend\"",
+					"-l\"basis_transcoder\"",
+					"-l\"camutils\"",
+					"-l\"civetweb\"",
+					"-l\"dracodec\"",
+					"-l\"filabridge\"",
+					"-l\"filaflat\"",
+					"-l\"filamat\"",
+					"-l\"filament\"",
+					"-l\"filameshio\"",
+					"-l\"geometry\"",
+					"-l\"gltfio_core\"",
+					"-l\"ibl\"",
+					"-l\"image\"",
+					"-l\"ktxreader\"",
+					"-l\"meshoptimizer\"",
+					"-l\"shaders\"",
+					"-l\"smol-v\"",
+					"-l\"stb\"",
+					"-l\"uberarchive\"",
+					"-l\"uberzlib\"",
+					"-l\"utils\"",
+					"-l\"viewer\"",
+					"-l\"zstd\"",
+					"-l\"spine-cpp\"",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = me.filament.HelloCocoaPods;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

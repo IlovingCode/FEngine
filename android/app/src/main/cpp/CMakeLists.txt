@@ -78,12 +78,16 @@ set_target_properties(basis_transcoder PROPERTIES IMPORTED_LOCATION
 add_library(zstd STATIC IMPORTED)
 set_target_properties(zstd PROPERTIES IMPORTED_LOCATION
         ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libzstd.a)
+        
+add_library(spine-cpp STATIC IMPORTED)
+set_target_properties(spine-cpp PROPERTIES IMPORTED_LOCATION
+        ${libs_DIR}/spine/lib/${ANDROID_ABI}/libspine-cpp.a)
 
 # ${ANDROID_ABI} is handy for our purpose here. Probably this ${ANDROID_ABI} is
 # the most valuable thing of this sample, the rest are pretty much normal cmake
 add_library(jsc SHARED IMPORTED)
 set_target_properties(jsc PROPERTIES IMPORTED_LOCATION
-     ${libs_DIR}/jsc/lib/${ANDROID_ABI}/libjsc.so)
+        ${libs_DIR}/jsc/lib/${ANDROID_ABI}/libjsc.so)
 
 # build application's shared lib
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
