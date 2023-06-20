@@ -7,9 +7,9 @@
 
 using namespace std;
 
-typedef filament::Texture* (*LoadTexture)(string);
+typedef filament::Texture* (*LoadTexture)(const char*);
 typedef void (*UnloadTexture)(filament::Texture*);
-typedef const uint8_t* (*Loadfile)(string, size_t*);
+typedef const uint8_t* (*Loadfile)(const char*, size_t*);
 
 namespace spine {
 	class MyTextureLoader : public TextureLoader {

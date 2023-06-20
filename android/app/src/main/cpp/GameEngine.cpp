@@ -71,6 +71,7 @@ using namespace std;
 using namespace filament;
 using namespace gltfio;
 using namespace utils;
+using namespace spine;
 
 Renderer* renderer;
 View* view;
@@ -118,11 +119,11 @@ string JSValueToStdString(JSContextRef context, JSValueRef jsValue) {
     return utf_string.compare("null") == 0 ? "" : utf_string;
 }
 
-const uint8_t* loadFile(string filename, size_t* size) {
+const uint8_t* loadFile(const char* filename, size_t* size) {
     uint8_t* data = nullptr;
     
 #ifdef ANDROID
-    AAsset* asset = AAssetManager_open(assetManager, filename.c_str(), 0);
+    AAsset* asset = AAssetManager_open(assetManager, filename, 0);
     data = AAsset_getBuffer(asset);
     size = AAsset_getLength(asset);
     AAsset_close(asset);
@@ -138,7 +139,7 @@ const uint8_t* loadFile(string filename, size_t* size) {
     return data;
 }
 
-Texture* loadTexture(string filename) {
+Texture* loadTexture(const char* filename) {
     size_t size = 0;
     const uint8_t* data = loadFile(filename, &size);
 
@@ -212,7 +213,7 @@ JSCALLBACK(setEnvironment) {
     const uint8_t* data = nullptr;
     
     {
-        data = loadFile(JSValueToStdString(ctx, arguments[1]), &size);
+        data = loadFile(JSValueToStdString(ctx, arguments[1]).c_str(), &size);
         
         image::Ktx1Bundle *bundle =
         new image::Ktx1Bundle(data, static_cast<uint32_t>(size));
@@ -224,7 +225,7 @@ JSCALLBACK(setEnvironment) {
         delete [] data;
     }
     {
-        data = loadFile(JSValueToStdString(ctx, arguments[2]), &size);
+        data = loadFile(JSValueToStdString(ctx, arguments[2]).c_str(), &size);
         
         image::Ktx1Bundle *bundle =
         new image::Ktx1Bundle(data, static_cast<uint32_t>(size));
@@ -363,7 +364,7 @@ JSCALLBACK(loadModel) {
 
     // Load the glTF file.
     size_t size = 0;
-    const uint8_t* data = loadFile(JSValueToStdString(ctx, arguments[0]), &size);
+    const uint8_t* data = loadFile(JSValueToStdString(ctx, arguments[0]).c_str(), &size);
 
     FilamentAsset *bunble = assetLoader->createAsset(data, static_cast<uint32_t>(size));
     resourceLoader->loadResources(bunble);
@@ -472,7 +473,7 @@ JSCALLBACK(getWorldTransform){
 }
 
 JSCALLBACK(loadImage) {
-    Texture* texture = loadTexture(JSValueToStdString(ctx, arguments[0]));
+    Texture* texture = loadTexture(JSValueToStdString(ctx, arguments[0]).c_str());
     
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, texture, sizeof(texture), nullptr, nullptr, nullptr);
 }
@@ -481,32 +482,53 @@ JSCALLBACK(loadSpine) {
     // Load the json file.
     string filename = JSValueToStdString(ctx, arguments[0]);
 
-    spine::TextureLoader* textureLoader = new spine::MyTextureLoader(loadTexture, unloadTexture);
+    TextureLoader* textureLoader = new MyTextureLoader(loadTexture, unloadTexture);
 
-    spine::String path((filename + ".atlas").c_str(), true);
     // Load the texture atlas
-    spine::Atlas *atlas = new spine::Atlas(path, textureLoader);
+    Atlas *atlas = new Atlas((filename + ".atlas").c_str(), textureLoader);
     if (atlas->getPages().size() == 0) {
         cout << "Failed to load atlas\n";
         delete atlas;
-        exit(0);
+        return nullptr;
     }
 
-    path.own((filename + ".json").c_str());
     // Load the skeleton data
-    spine::SkeletonJson json(atlas);
-    spine::SkeletonData *skeletonData = json.readSkeletonDataFile(path);
+    SkeletonJson json(atlas);
+    SkeletonData *skeletonData = json.readSkeletonDataFile((filename + ".json").c_str());
     if (!skeletonData) {
         cout << "Failed to load skeleton data\n";
         delete atlas;
         return nullptr;
     }
 
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, skeletonData, sizeof(skeletonData), nullptr, nullptr, nullptr);;
+}
+
+JSCALLBACK(addSpine) {
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    SkeletonData* skeletonData = static_cast<SkeletonData*>(data);
+    
+    Skeleton* skeleton = new Skeleton(skeletonData);
+    
+    Slot* slot = skeleton->getSlots()[0];
+    Attachment* attachment = slot->getAttachment();
+    float* worldVertices = nullptr;
+    
+    if(attachment->getRTTI().isExactly(RegionAttachment::rtti)) {
+        RegionAttachment* region = static_cast<RegionAttachment*>(attachment);
+        
+        worldVertices = new float[8];
+        region->computeWorldVertices(*slot, worldVertices, 0);
+    } else {
+        
+    }
+    
     return nullptr;
 }
 
-spine::SpineExtension *spine::getDefaultExtension() {
-    return new spine::MyExtension(loadFile);
+SpineExtension *spine::getDefaultExtension() {
+    return new MyExtension(loadFile);
 }
 
 IndexBuffer* getIndexBuffer() {
@@ -650,7 +672,7 @@ JSCALLBACK(playAudio) {
 
 JSCALLBACK(renderText) {
     size_t size = 0;
-    const uint8_t* data = loadFile(JSValueToStdString(ctx, arguments[0]), &size);
+    const uint8_t* data = loadFile(JSValueToStdString(ctx, arguments[0]).c_str(), &size);
     
     string word = JSValueToStdString(ctx, arguments[1]);
     
