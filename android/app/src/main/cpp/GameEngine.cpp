@@ -504,29 +504,6 @@ JSCALLBACK(loadSpine) {
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, skeletonData, sizeof(skeletonData), nullptr, nullptr, nullptr);;
 }
 
-JSCALLBACK(addSpine) {
-    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
-    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-    SkeletonData* skeletonData = static_cast<SkeletonData*>(data);
-    
-    Skeleton* skeleton = new Skeleton(skeletonData);
-    
-    Slot* slot = skeleton->getSlots()[0];
-    Attachment* attachment = slot->getAttachment();
-    float* worldVertices = nullptr;
-    
-    if(attachment->getRTTI().isExactly(RegionAttachment::rtti)) {
-        RegionAttachment* region = static_cast<RegionAttachment*>(attachment);
-        
-        worldVertices = new float[8];
-        region->computeWorldVertices(*slot, worldVertices, 0);
-    } else {
-        
-    }
-    
-    return nullptr;
-}
-
 SpineExtension *spine::getDefaultExtension() {
     return new MyExtension(loadFile);
 }
@@ -847,15 +824,7 @@ JSCALLBACK(addText) {
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, vb, sizeof(vb), nullptr, nullptr, nullptr);
 }
 
-JSCALLBACK(addRenderer){
-    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
-    Entity entity = Entity::import(id);
-    
-    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
-    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
-    void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
-
-    Engine *engine = renderer->getEngine();
+MaterialInstance* getMaterial(Engine *engine, bool isMask) {
     static Material *mat, *mask;
     
     if(mat == nullptr) {
@@ -884,6 +853,129 @@ JSCALLBACK(addRenderer){
             .build(*engine);
     }
     
+    return (isMask ? mask : mat)->createInstance();
+}
+
+JSCALLBACK(addSpine) {
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    Entity entity = Entity::import(id);
+    
+    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    SkeletonData* skeletonData = static_cast<SkeletonData*>(data);
+    
+    Skeleton* skeleton = new Skeleton(skeletonData);
+    
+    Vector<Slot *> slots = skeleton->getSlots();
+    size_t vertCount = 0, trisCount = 0;
+    
+    for(size_t i = 0; i < slots.size(); i++) {
+        Slot* slot = slots[i];
+        Attachment* attachment = slot->getAttachment();
+        if(!attachment) continue;
+        
+        if(attachment->getRTTI().isExactly(RegionAttachment::rtti)) {
+            vertCount += 4;
+            trisCount += 6;
+        } else {
+            MeshAttachment* mesh = static_cast<MeshAttachment*>(attachment);
+            vertCount += mesh->getWorldVerticesLength();
+            trisCount += mesh->getTriangles().size();
+        }
+    }
+    
+    float *vertices = new float[vertCount];
+    uint16_t *indices = new uint16_t[trisCount];
+    Texture *texture = nullptr;
+    vertCount = 0;trisCount = 0;
+    
+    for(size_t i = 0; i < slots.size(); i++) {
+        Slot* slot = slots[i];
+        Attachment* attachment = slot->getAttachment();
+        if(!attachment) continue;
+                
+        if(attachment->getRTTI().isExactly(RegionAttachment::rtti)) {
+            RegionAttachment* region = static_cast<RegionAttachment*>(attachment);
+            texture = (Texture*)((AtlasRegion*)region->getRegion())->page->texture;
+            
+            region->computeWorldVertices(*slot, vertices, vertCount, 4);
+            float* uvs = region->getUVs().buffer();
+            
+            for(size_t j = 0; j < 4; j++) {
+                vertices[vertCount + j * 4 + 2] = uvs[j * 2 + 0];
+                vertices[vertCount + j * 4 + 3] = uvs[j * 2 + 1];
+            }
+            
+            indices[trisCount + 0] = 0;
+            indices[trisCount + 1] = 1;
+            indices[trisCount + 2] = 2;
+            indices[trisCount + 3] = 2;
+            indices[trisCount + 4] = 3;
+            indices[trisCount + 5] = 0;
+            
+            vertCount += 4;
+            trisCount += 6;
+        } else {
+            MeshAttachment* mesh = static_cast<MeshAttachment*>(attachment);
+            texture = (Texture*)((AtlasRegion*)mesh->getRegion())->page->texture;
+            Vector<unsigned short> tris = mesh->getTriangles();
+            size_t size = mesh->getWorldVerticesLength();
+            float* uvs = mesh->getUVs().buffer();
+            
+            mesh->computeWorldVertices(*slot, 0, size, vertices, vertCount, 4);
+            memcpy(indices + trisCount, tris.buffer(), tris.size() * 2);
+            
+            for(size_t j = 0; j < size; j++) {
+                vertices[vertCount + j * 4 + 2] = uvs[j * 2 + 0];
+                vertices[vertCount + j * 4 + 3] = uvs[j * 2 + 1];
+            }
+            
+            vertCount += size;
+            trisCount += tris.size();
+        }
+    }
+    
+    Engine *engine = renderer->getEngine();
+    VertexBuffer* vb = VertexBuffer::Builder()
+        .vertexCount((uint32_t)vertCount)
+        .bufferCount(1)
+        .attribute(VertexAttribute::POSITION, 0, VertexBuffer::AttributeType::FLOAT2, 0, 16)
+        .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 8, 16)
+        .build(*engine);
+    
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(vertices, vertCount * 4, nullptr));
+    
+    IndexBuffer *ib = IndexBuffer::Builder()
+        .indexCount((uint32_t)trisCount)
+        .bufferType(IndexBuffer::IndexType::USHORT)
+        .build(*engine);
+    ib->setBuffer(*engine, IndexBuffer::BufferDescriptor(indices, trisCount * 2, nullptr));
+    
+    auto matInstance = getMaterial(engine, false);
+    matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+    
+    RenderableManager::Builder(1)
+        .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
+        .material(0, matInstance)
+        .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vb, ib, 0, trisCount)
+        .culling(false)
+        .receiveShadows(false)
+        .castShadows(false)
+        .build(*engine, entity);
+    
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, vb, sizeof(vb), nullptr, nullptr, nullptr);
+}
+
+JSCALLBACK(addRenderer){
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    Entity entity = Entity::import(id);
+    
+    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+    size_t count = JSObjectGetTypedArrayLength(ctx, array, nullptr);
+    void* VERTICES = JSObjectGetTypedArrayBytesPtr(ctx, array, nullptr);
+
+    Engine *engine = renderer->getEngine();
+
     VertexBuffer* vb = VertexBuffer::Builder()
         .vertexCount((uint32_t)count / 4)
         .bufferCount(1)
@@ -894,7 +986,7 @@ JSCALLBACK(addRenderer){
 
     bool isMask = JSValueToBoolean(ctx, arguments[3]);
     uint8_t maskValue = JSValueToNumber(ctx, arguments[4], nullptr);
-    auto matInstance = (isMask ? mask : mat)->createInstance();
+    auto matInstance = getMaterial(engine, isMask);
 
     array = JSValueToObject(ctx, arguments[2], nullptr);
     void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
@@ -1152,6 +1244,7 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("playAudio", playAudio, globalObject);
     registerNativeFunction("loadModel", loadModel, globalObject);
     registerNativeFunction("loadSpine", loadSpine, globalObject);
+    registerNativeFunction("addSpine", addSpine, globalObject);
     registerNativeFunction("addModel", addModel, globalObject);
     registerNativeFunction("updateLight", updateLight, globalObject);
     registerNativeFunction("playAnimation", playAnimation, globalObject);

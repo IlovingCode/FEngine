@@ -148,7 +148,5 @@ void function init() {
         ibl: 'env/env_ibl.ktx',
         indirect_intensity: LIGHT_SCALE,
     })
-
-    globalThis.loadSpine('spine/owl')
 }();
 

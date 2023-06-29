@@ -171,5 +171,9 @@ void function init() {
         .setText('0')
         .setColor(new Vec4(1, 1, 0, 1))
     bound.setAlignment(-1, 0, 0, 50, 0, 0)
+
+    let spinedata = globalThis.loadSpine('spine/owl')
+    node = uiRoot.addChild()
+    let spine = globalThis.addSpine(node, spinedata)
 }();
 
