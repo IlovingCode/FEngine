@@ -879,12 +879,14 @@ JSCALLBACK(addSpine) {
             trisCount += 6;
         } else {
             MeshAttachment* mesh = static_cast<MeshAttachment*>(attachment);
-            vertCount += mesh->getWorldVerticesLength();
+            vertCount += mesh->getWorldVerticesLength() >> 1;
             trisCount += mesh->getTriangles().size();
         }
     }
     
-    float *vertices = new float[vertCount];
+//    cout << vertCount << endl;
+    
+    float *vertices = new float[vertCount * 4];
     uint16_t *indices = new uint16_t[trisCount];
     Texture *texture = nullptr;
     vertCount = 0;trisCount = 0;
@@ -902,16 +904,16 @@ JSCALLBACK(addSpine) {
             float* uvs = region->getUVs().buffer();
             
             for(size_t j = 0; j < 4; j++) {
-                vertices[vertCount + j * 4 + 2] = uvs[j * 2 + 0];
-                vertices[vertCount + j * 4 + 3] = uvs[j * 2 + 1];
+                vertices[(vertCount + j) * 4 + 2] = uvs[j * 2 + 0];
+                vertices[(vertCount + j) * 4 + 3] = uvs[j * 2 + 1];
             }
             
-            indices[trisCount + 0] = 0;
-            indices[trisCount + 1] = 1;
-            indices[trisCount + 2] = 2;
-            indices[trisCount + 3] = 2;
-            indices[trisCount + 4] = 3;
-            indices[trisCount + 5] = 0;
+            indices[trisCount + 0] = vertCount + 0;
+            indices[trisCount + 1] = vertCount + 1;
+            indices[trisCount + 2] = vertCount + 2;
+            indices[trisCount + 3] = vertCount + 2;
+            indices[trisCount + 4] = vertCount + 3;
+            indices[trisCount + 5] = vertCount + 0;
             
             vertCount += 4;
             trisCount += 6;
@@ -919,21 +921,27 @@ JSCALLBACK(addSpine) {
             MeshAttachment* mesh = static_cast<MeshAttachment*>(attachment);
             texture = (Texture*)((AtlasRegion*)mesh->getRegion())->page->texture;
             Vector<unsigned short> tris = mesh->getTriangles();
-            size_t size = mesh->getWorldVerticesLength();
+            size_t size = mesh->getWorldVerticesLength() >> 1;
             float* uvs = mesh->getUVs().buffer();
             
-            mesh->computeWorldVertices(*slot, 0, size, vertices, vertCount, 4);
-            memcpy(indices + trisCount, tris.buffer(), tris.size() * 2);
+//            cout << mesh->getWorldVerticesLength() << " " << mesh->getVertices().size() << " " << mesh->getUVs().size() << endl;
+            
+            mesh->computeWorldVertices(*slot, 0, size, vertices, vertCount * 4, 4);
+            for(size_t j = 0; j < tris.size(); j++) indices[trisCount + j] = vertCount + tris[j];
             
             for(size_t j = 0; j < size; j++) {
-                vertices[vertCount + j * 4 + 2] = uvs[j * 2 + 0];
-                vertices[vertCount + j * 4 + 3] = uvs[j * 2 + 1];
+                vertices[(vertCount + j) * 4 + 2] = uvs[j * 2 + 0];
+                vertices[(vertCount + j) * 4 + 3] = uvs[j * 2 + 1];
             }
             
             vertCount += size;
             trisCount += tris.size();
         }
     }
+    
+//    for(int i = 0; i < vertCount * 4; i++) cout << vertices[i] << " ";
+//    cout << endl;
+//    for(int i = 0; i < trisCount; i++) cout << indices[i] << " ";
     
     Engine *engine = renderer->getEngine();
     VertexBuffer* vb = VertexBuffer::Builder()
@@ -943,7 +951,7 @@ JSCALLBACK(addSpine) {
         .attribute(VertexAttribute::UV0, 0, VertexBuffer::AttributeType::FLOAT2, 8, 16)
         .build(*engine);
     
-    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(vertices, vertCount * 4, nullptr));
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(vertices, vertCount * 16, nullptr));
     
     IndexBuffer *ib = IndexBuffer::Builder()
         .indexCount((uint32_t)trisCount)
@@ -953,6 +961,8 @@ JSCALLBACK(addSpine) {
     
     auto matInstance = getMaterial(engine, false);
     matInstance->setParameter("texture", texture, TextureSampler(TextureSampler::MagFilter::LINEAR));
+    matInstance->setStencilReferenceValue(0);
+    matInstance->setStencilCompareFunction(MaterialInstance::StencilCompareFunc::LE);
     
     RenderableManager::Builder(1)
         .boundingBox({{ -1, -1, -1 }, { 1, 1, 1 }})
