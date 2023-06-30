@@ -174,7 +174,7 @@ void function init() {
 
     let spinedata = globalThis.loadSpine('spine/owl')
     node = uiRoot.addChild()
-    let spine = globalThis.addSpine(node, spinedata, textures.progress_bg.native)
+    let spine = globalThis.addSpine(node.id(), spinedata)
     globalThis.updateMaterial(node.id(), true, UI_LAYER)
     
     // bound = new BoundBox2D(node, new Vec2(100, 100))
