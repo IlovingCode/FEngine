@@ -500,8 +500,22 @@ JSCALLBACK(loadSpine) {
         delete atlas;
         return nullptr;
     }
-
-    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, skeletonData, sizeof(skeletonData), nullptr, nullptr, nullptr);;
+    
+    AnimationStateData *animationData = new AnimationStateData(skeletonData);
+    
+    JSObjectRef data = JSValueToObject(ctx, arguments[1], nullptr);
+    
+    JSStringRef name = JSStringCreateWithUTF8CString("skeletonData");
+    JSObjectRef value = JSObjectMakeArrayBufferWithBytesNoCopy(ctx, skeletonData, sizeof(skeletonData), nullptr, nullptr, nullptr);
+    JSObjectSetProperty(ctx, data, name, value, kJSPropertyAttributeNone, nullptr);
+    JSStringRelease(name);
+    
+    name = JSStringCreateWithUTF8CString("animationData");
+    value = JSObjectMakeArrayBufferWithBytesNoCopy(ctx, animationData, sizeof(animationData), nullptr, nullptr, nullptr);
+    JSObjectSetProperty(ctx, data, name, value, kJSPropertyAttributeNone, nullptr);
+    JSStringRelease(name);
+    
+    return arguments[1];
 }
 
 SpineExtension *spine::getDefaultExtension() {
@@ -856,6 +870,68 @@ MaterialInstance* getMaterial(Engine *engine, bool isMask) {
     return (isMask ? mask : mat)->createInstance();
 }
 
+JSCALLBACK(playSpine) {
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    AnimationState* animator = static_cast<AnimationState*>(data);
+    
+    string name = JSValueToStdString(ctx, arguments[1]);
+    
+    animator->setAnimation(0, name.c_str(), true);
+    
+    return nullptr;
+}
+
+JSCALLBACK(updateSpine) {
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    VertexBuffer* vb = static_cast<VertexBuffer*>(data);
+    
+    array = JSValueToObject(ctx, arguments[1], nullptr);
+    data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    AnimationState* animator = static_cast<AnimationState*>(data);
+    
+    array = JSValueToObject(ctx, arguments[2], nullptr);
+    data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    Skeleton* skeleton = static_cast<Skeleton*>(data);
+    
+    array = JSValueToObject(ctx, arguments[3], nullptr);
+    data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    float *vertices = static_cast<float*>(data);
+    
+    float dt = JSValueToNumber(ctx, arguments[4], nullptr);
+    
+    animator->update(dt);
+    animator->apply(*skeleton);
+    skeleton->updateWorldTransform();
+    
+    Vector<Slot *> slots = skeleton->getSlots();
+    size_t vertCount = 0;
+    for(size_t i = 0; i < slots.size(); i++) {
+        Slot* slot = slots[i];
+        Attachment* attachment = slot->getAttachment();
+        if(!attachment) continue;
+        
+        if(attachment->getRTTI().isExactly(RegionAttachment::rtti)) {
+            RegionAttachment* region = static_cast<RegionAttachment*>(attachment);
+            
+            region->computeWorldVertices(*slot, vertices, vertCount * 4, 4);
+            vertCount += 4;
+        }else {
+            MeshAttachment* mesh = static_cast<MeshAttachment*>(attachment);
+            size_t size = mesh->getWorldVerticesLength();
+            
+            mesh->computeWorldVertices(*slot, 0, size, vertices, vertCount * 4, 4);
+            vertCount += size >> 1;
+        }
+    }
+    
+    Engine *engine = renderer->getEngine();
+    vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(vertices, vertCount * 16, nullptr));
+    
+    return nullptr;
+}
+
 JSCALLBACK(addSpine) {
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
     Entity entity = Entity::import(id);
@@ -864,7 +940,15 @@ JSCALLBACK(addSpine) {
     void* data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     SkeletonData* skeletonData = static_cast<SkeletonData*>(data);
     
+    array = JSValueToObject(ctx, arguments[2], nullptr);
+    data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    AnimationStateData* animationData = static_cast<AnimationStateData*>(data);
+    
     Skeleton* skeleton = new Skeleton(skeletonData);
+    AnimationState *animator = new AnimationState(animationData);
+    
+    skeleton->setScaleX(.3f);
+    skeleton->setScaleY(.3f);
     
     Vector<Slot *> slots = skeleton->getSlots();
     size_t vertCount = 0, trisCount = 0;
@@ -884,11 +968,10 @@ JSCALLBACK(addSpine) {
         }
     }
     
-//    cout << vertCount << endl;
-    
     float *vertices = new float[vertCount * 4];
     uint16_t *indices = new uint16_t[trisCount];
     Texture *texture = nullptr;
+    float* uvs = nullptr;
     vertCount = 0;trisCount = 0;
     
     for(size_t i = 0; i < slots.size(); i++) {
@@ -899,9 +982,7 @@ JSCALLBACK(addSpine) {
         if(attachment->getRTTI().isExactly(RegionAttachment::rtti)) {
             RegionAttachment* region = static_cast<RegionAttachment*>(attachment);
             texture = (Texture*)((AtlasRegion*)region->getRegion())->page->texture;
-            
-            region->computeWorldVertices(*slot, vertices, vertCount, 4);
-            float* uvs = region->getUVs().buffer();
+            uvs = region->getUVs().buffer();
             
             for(size_t j = 0; j < 4; j++) {
                 vertices[(vertCount + j) * 4 + 2] = uvs[j * 2 + 0];
@@ -922,11 +1003,8 @@ JSCALLBACK(addSpine) {
             texture = (Texture*)((AtlasRegion*)mesh->getRegion())->page->texture;
             Vector<unsigned short> tris = mesh->getTriangles();
             size_t size = mesh->getWorldVerticesLength() >> 1;
-            float* uvs = mesh->getUVs().buffer();
+            uvs = mesh->getUVs().buffer();
             
-//            cout << mesh->getWorldVerticesLength() << " " << mesh->getVertices().size() << " " << mesh->getUVs().size() << endl;
-            
-            mesh->computeWorldVertices(*slot, 0, size, vertices, vertCount * 4, 4);
             for(size_t j = 0; j < tris.size(); j++) indices[trisCount + j] = vertCount + tris[j];
             
             for(size_t j = 0; j < size; j++) {
@@ -938,10 +1016,6 @@ JSCALLBACK(addSpine) {
             trisCount += tris.size();
         }
     }
-    
-//    for(int i = 0; i < vertCount * 4; i++) cout << vertices[i] << " ";
-//    cout << endl;
-//    for(int i = 0; i < trisCount; i++) cout << indices[i] << " ";
     
     Engine *engine = renderer->getEngine();
     VertexBuffer* vb = VertexBuffer::Builder()
@@ -972,6 +1046,23 @@ JSCALLBACK(addSpine) {
         .receiveShadows(false)
         .castShadows(false)
         .build(*engine, entity);
+    
+    array = JSValueToObject(ctx, arguments[3], nullptr);
+    
+    JSStringRef name = JSStringCreateWithUTF8CString("animator");
+    JSValueRef value = JSObjectMakeArrayBufferWithBytesNoCopy(ctx, animator, sizeof(animator), nullptr, nullptr, nullptr);
+    JSObjectSetProperty(ctx, array, name, value, kJSPropertyAttributeNone, nullptr);
+    JSStringRelease(name);
+    
+    name = JSStringCreateWithUTF8CString("vertices");
+    value = JSObjectMakeArrayBufferWithBytesNoCopy(ctx, vertices, vertCount * 16, nullptr, nullptr, nullptr);
+    JSObjectSetProperty(ctx, array, name, value, kJSPropertyAttributeNone, nullptr);
+    JSStringRelease(name);
+    
+    name = JSStringCreateWithUTF8CString("skeleton");
+    value = JSObjectMakeArrayBufferWithBytesNoCopy(ctx, skeleton, sizeof(skeleton), nullptr, nullptr, nullptr);
+    JSObjectSetProperty(ctx, array, name, value, kJSPropertyAttributeNone, nullptr);
+    JSStringRelease(name);
     
     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, vb, sizeof(vb), nullptr, nullptr, nullptr);
 }
@@ -1255,6 +1346,8 @@ GameEngine::GameEngine(void* nativeWindow, double now){
     registerNativeFunction("loadModel", loadModel, globalObject);
     registerNativeFunction("loadSpine", loadSpine, globalObject);
     registerNativeFunction("addSpine", addSpine, globalObject);
+    registerNativeFunction("playSpine", playSpine, globalObject);
+    registerNativeFunction("updateSpine", updateSpine, globalObject);
     registerNativeFunction("addModel", addModel, globalObject);
     registerNativeFunction("updateLight", updateLight, globalObject);
     registerNativeFunction("playAnimation", playAnimation, globalObject);

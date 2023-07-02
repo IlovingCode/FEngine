@@ -48,6 +48,14 @@ uiRoot.font = {
     data: {}
 }
 
+uiRoot.spines = {
+    owl: {
+        path: 'spine/owl',
+        skeletonData: null,
+        animationData: null,
+    }
+}
+
 class UIController extends Component {
     constructor(node) {
         super(node)
@@ -172,12 +180,7 @@ void function init() {
         .setColor(new Vec4(1, 1, 0, 1))
     bound.setAlignment(-1, 0, 0, 50, 0, 0)
 
-    let spinedata = globalThis.loadSpine('spine/owl')
     node = uiRoot.addChild()
-    let spine = globalThis.addSpine(node.id(), spinedata)
-    globalThis.updateMaterial(node.id(), true, UI_LAYER)
-    
-    // bound = new BoundBox2D(node, new Vec2(100, 100))
-    // new SpriteSimple(node, textures.progress_bg)
+    new SpineSimple(node, uiRoot.spines.owl).play('idle')
 }();
 

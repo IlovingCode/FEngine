@@ -288,12 +288,19 @@ class Scene extends FNode {
     }
 
     init() {
-        let textures = this.textures
+        let { textures, font, spines } = this
         if (textures) {
-            for (let i in textures) textures[i].native = loadImage(i + '.ktx2')
+            for (let i in textures) textures[i].native = globalThis.loadImage(i + '.ktx2')
         }
 
-        this.font && globalThis.buildFont(this.font)
+        font && globalThis.buildFont(font)
+
+        if (spines) {
+            for (let i in spines) {
+                let spineData = spines[i]
+                globalThis.loadSpine(spineData.path, spineData)
+            }
+        }
 
         return this
     }
@@ -1226,6 +1233,29 @@ class ProgressCircle extends Component {
     }
 
     get() { return this.value }
+}
+
+class SpineSimple extends Component {
+    constructor(node, spineData) {
+        super(node)
+
+        let data = this.data = { skeleton: null, animator: null, vertices: null }
+        this.native = globalThis.addSpine(node.id(), spineData.skeletonData, spineData.animationData, data)
+    }
+
+    onEnableChanged(enabled) {
+        globalThis.updateMaterial(this.node.id(), enabled, UI_LAYER)
+    }
+
+    update(dt) {
+        let { animator, skeleton, vertices} = this.data
+
+        globalThis.updateSpine(this.native, animator, skeleton, vertices, dt)
+    }
+
+    play(name) {
+        globalThis.playSpine(this.data.animator, name)
+    }
 }
 
 class ModelSimple extends Component {
