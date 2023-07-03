@@ -281,6 +281,7 @@ class Scene extends FNode {
         this.light = null
         this.textures = null
         this.font = null
+        this.spines = null
         this.transformBuffer = null
         this.bufferLength = 0
         this.interactables = []
@@ -298,7 +299,7 @@ class Scene extends FNode {
         if (spines) {
             for (let i in spines) {
                 let spineData = spines[i]
-                globalThis.loadSpine(spineData.path, spineData)
+                globalThis.loadSpine(spineData.path, spineData, spineData.defaultMix || 0)
             }
         }
 
@@ -1253,8 +1254,8 @@ class SpineSimple extends Component {
         globalThis.updateSpine(this.native, animator, skeleton, vertices, dt)
     }
 
-    play(name) {
-        globalThis.playSpine(this.data.animator, name)
+    play(name, loop = true) {
+        globalThis.playSpine(this.data.animator, name, loop)
     }
 }
 

@@ -53,6 +53,7 @@ uiRoot.spines = {
         path: 'spine/owl',
         skeletonData: null,
         animationData: null,
+        defaultMix: .3,
     }
 }
 
@@ -127,8 +128,8 @@ void function init() {
     new SpriteSimple(node, textures.tiny).setEnable(false)
     bound.setAlignment(0, -1, 0, 0, 10, 0)
 
-    node = node.addChild()
-    bound = new BoundBox2D(node, new Vec2(250, 250))
+    // node = node.addChild()
+    // bound = new BoundBox2D(node, new Vec2(250, 250))
     // new SpriteSimple(node, textures.tiny, true)
     // let scrollView = new ScrollView(node)
 
@@ -181,6 +182,11 @@ void function init() {
     bound.setAlignment(-1, 0, 0, 50, 0, 0)
 
     node = uiRoot.addChild()
-    new SpineSimple(node, uiRoot.spines.owl).play('idle')
+    let spine = new SpineSimple(node, uiRoot.spines.owl)
+    spine.play('idle')
+    gameController.spine = spine
+
+    node.scale.x = .3
+    node.scale.y = .3
 }();
 

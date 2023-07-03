@@ -502,6 +502,8 @@ JSCALLBACK(loadSpine) {
     }
     
     AnimationStateData *animationData = new AnimationStateData(skeletonData);
+    float mix = JSValueToNumber(ctx, arguments[2], nullptr);
+    animationData->setDefaultMix(mix);
     
     JSObjectRef data = JSValueToObject(ctx, arguments[1], nullptr);
     
@@ -876,10 +878,10 @@ JSCALLBACK(playSpine) {
     AnimationState* animator = static_cast<AnimationState*>(data);
     
     string name = JSValueToStdString(ctx, arguments[1]);
+    bool loop = JSValueIsBoolean(ctx, arguments[2]);
+    TrackEntry *track = animator->setAnimation(0, name.c_str(), loop);
     
-    animator->setAnimation(0, name.c_str(), true);
-    
-    return nullptr;
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, track, sizeof(track), nullptr, nullptr, nullptr);
 }
 
 JSCALLBACK(updateSpine) {
@@ -929,7 +931,7 @@ JSCALLBACK(updateSpine) {
     Engine *engine = renderer->getEngine();
     vb->setBufferAt(*engine, 0, VertexBuffer::BufferDescriptor(vertices, vertCount * 16, nullptr));
     
-    return nullptr;
+    return arguments[0];
 }
 
 JSCALLBACK(addSpine) {
@@ -946,9 +948,6 @@ JSCALLBACK(addSpine) {
     
     Skeleton* skeleton = new Skeleton(skeletonData);
     AnimationState *animator = new AnimationState(animationData);
-    
-    skeleton->setScaleX(.3f);
-    skeleton->setScaleY(.3f);
     
     Vector<Slot *> slots = skeleton->getSlots();
     size_t vertCount = 0, trisCount = 0;
@@ -986,7 +985,7 @@ JSCALLBACK(addSpine) {
             
             for(size_t j = 0; j < 4; j++) {
                 vertices[(vertCount + j) * 4 + 2] = uvs[j * 2 + 0];
-                vertices[(vertCount + j) * 4 + 3] = uvs[j * 2 + 1];
+                vertices[(vertCount + j) * 4 + 3] = 1 - uvs[j * 2 + 1];
             }
             
             indices[trisCount + 0] = vertCount + 0;
@@ -1009,7 +1008,7 @@ JSCALLBACK(addSpine) {
             
             for(size_t j = 0; j < size; j++) {
                 vertices[(vertCount + j) * 4 + 2] = uvs[j * 2 + 0];
-                vertices[(vertCount + j) * 4 + 3] = uvs[j * 2 + 1];
+                vertices[(vertCount + j) * 4 + 3] = 1 - uvs[j * 2 + 1];
             }
             
             vertCount += size;

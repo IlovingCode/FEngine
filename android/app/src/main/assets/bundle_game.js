@@ -24,14 +24,16 @@ gameRoot.textures = {
     }
 }
 
+let gameController = null
+
 class GameController extends Component {
     constructor(node, textures, character) {
         super(node)
 
         // this.timer = 0
-        // this.origin = Vec2.ZERO.clone()
-        // this.dir = Vec2.ZERO.clone()
-        // gameRoot.interactables.push(this)
+        this.origin = Vec2.ZERO.clone()
+        this.dir = Vec2.ZERO.clone()
+        gameRoot.interactables.push(this)
 
         // let { bg0, bg1, bg2, bg3 } = textures
 
@@ -87,7 +89,12 @@ class GameController extends Component {
     check(x, y, state) {
         let origin = this.origin
         if (state == 0) {
-            origin.set(x, y)
+            // origin.set(x, y)
+            // return
+        }
+
+        if (state == 3) {
+            this.spine.play('idle')
             return
         }
 
@@ -100,24 +107,30 @@ class GameController extends Component {
 
         dir.normalize()
 
-        let { width, height, scale } = gameRoot.camera
-        let node = gameRoot.camera.node
-        let pos = node.position
-        pos.x += dir.x * length
-        pos.y += dir.y * length
+        if(Math.abs(dir.x) < Math.abs(dir.y)) {
+            this.spine.play(dir.y > 0 ? 'up' : 'down')
+        } else {
+            this.spine.play(dir.x < 0 ? 'right' : 'left')
+        }
 
-        width *= scale * .5
-        height *= scale * .5
+        // let { width, height, scale } = gameRoot.camera
+        // let node = gameRoot.camera.node
+        // let pos = node.position
+        // pos.x += dir.x * length
+        // pos.y += dir.y * length
 
-        if (pos.x < width) pos.x = width
-        if (pos.y < height) pos.y = height
+        // width *= scale * .5
+        // height *= scale * .5
 
-        width = this.width - width
-        height = this.height - height
-        if (pos.x > width) pos.x = width
-        if (pos.y > height) pos.y = height
+        // if (pos.x < width) pos.x = width
+        // if (pos.y < height) pos.y = height
 
-        node.isDirty = true
+        // width = this.width - width
+        // height = this.height - height
+        // if (pos.x > width) pos.x = width
+        // if (pos.y > height) pos.y = height
+
+        // node.isDirty = true
     }
 }
 
@@ -133,7 +146,6 @@ void function init() {
 
     let model = globalThis.loadModel('amongus.glb')
     let modelview = gameRoot.importNodesFromModel(model)
-    // console.log(JSON.stringify(modelview.data))
 
     gameRoot.light && globalThis.updateLight(gameRoot.light.id(), modelview.data.lightIntensity * LIGHT_SCALE)
     gameRoot.camera.scale = .5
@@ -141,7 +153,7 @@ void function init() {
     modelview.play('ArmatureAction', true)
 
     node = gameRoot.addChild()
-    new GameController(node, textures, modelview.getNodeByName('Armature'))
+    gameController = new GameController(node, textures, modelview.getNodeByName('Armature'))
 
     gameRoot.setEnvironment({
         skybox: 'env/env_skybox.ktx',
