@@ -53,7 +53,7 @@
 #include <JavaScriptCore/JavaScript.h>
 #include "Object_C_Interface.h"
 
-#include "MyTextureLoader.cpp"
+#include "MyExtension.h"
 #ifdef ANDROID
 #include <android/asset_manager.h>
 #else
