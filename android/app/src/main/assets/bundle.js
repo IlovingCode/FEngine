@@ -1249,13 +1249,13 @@ class SpineSimple extends Component {
     }
 
     update(dt) {
-        let { animator, skeleton, vertices} = this.data
+        let { animator, skeleton, vertices } = this.data
 
         globalThis.updateSpine(this.native, animator, skeleton, vertices, dt)
     }
 
-    play(name, loop = true) {
-        globalThis.playSpine(this.data.animator, name, loop)
+    play(name, loop = true, delay = -1) {
+        globalThis.playSpine(this.data.animator, name, loop, delay)
     }
 }
 
