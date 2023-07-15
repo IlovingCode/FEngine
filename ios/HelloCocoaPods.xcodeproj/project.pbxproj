@@ -396,7 +396,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${PODS_ROOT}/Filament/lib/universal\"",
-					"\"${PODS_ROOT}/../../android/app/libs/spine/lib/arm64-v8a\"",
+					"\"${PODS_ROOT}/../../android/app/libs/spine/lib/ios\"",
 				);
 				OTHER_CFLAGS = "";
 				OTHER_CPLUSPLUSFLAGS = (
@@ -461,7 +461,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${PODS_ROOT}/Filament/lib/universal\"",
-					"\"${PODS_ROOT}/../../android/app/libs/spine/lib/arm64-v8a\"",
+					"\"${PODS_ROOT}/../../android/app/libs/spine/lib/ios\"",
 				);
 				OTHER_CFLAGS = "";
 				OTHER_CPLUSPLUSFLAGS = (

@@ -127,9 +127,9 @@ const uint8_t *loadFile(const char *filename, size_t *size)
 
 #ifdef ANDROID
     AAsset *asset = AAssetManager_open(assetManager, filename, 0);
-    data = AAsset_getBuffer(asset);
-    size = AAsset_getLength(asset);
-    AAsset_close(asset);
+    data = (uint8_t*)AAsset_getBuffer(asset);
+    *size = AAsset_getLength(asset);
+//    AAsset_close(asset);
 #else
     ifstream file(assets + filename, ios::binary | ios::ate);
     *size = file.tellg();
@@ -154,6 +154,7 @@ Texture *loadTexture(const char *filename)
     reader.requestFormat(Texture::InternalFormat::RGBA8);
 
     Texture *texture = reader.load(data, size, ktxreader::Ktx2Reader::TransferFunction::sRGB);
+
     delete[] data;
 
     return texture;
@@ -341,7 +342,7 @@ JSCALLBACK(addModel)
     for (size_t i = 0; i < count; i++)
     {
         name = JSStringCreateWithUTF8CString(animator->getAnimationName(i));
-        JSValueRef id = JSValueMakeNumber(ctx, i);
+        id = JSValueMakeNumber(ctx, i);
         JSValueRef duration = JSValueMakeNumber(ctx, animator->getAnimationDuration(i));
         JSObjectSetProperty(ctx, animations, name, id, kJSPropertyAttributeNone, nullptr);
         JSObjectSetProperty(ctx, animationDurations, name, duration, kJSPropertyAttributeNone, nullptr);
@@ -715,6 +716,7 @@ JSCALLBACK(renderText)
     /* prepare font */
     stbtt_fontinfo info;
     stbtt_InitFont(&info, data, 0);
+
     delete[] data;
 
     int b_w = JSValueToNumber(ctx, arguments[3], nullptr); /* bitmap width */
@@ -1380,6 +1382,7 @@ void GameEngine::input(float x, float y, uint8_t state)
 void GameEngine::setNativeHandle(void *handle)
 {
 #ifdef ANDROID
+    Engine *engine = renderer->getEngine();
     if (handle)
         swapChain = engine->createSwapChain(handle);
     else

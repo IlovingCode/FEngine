@@ -44,7 +44,7 @@ Java_com_example_helloaar_MainActivity_onStart(JNIEnv *env, jobject thiz, jobjec
         nativeHandle = env->NewGlobalRef(thiz);
         jclass clazz = env->GetObjectClass(thiz);
         playAudio = env->GetMethodID(clazz, "playAudio", "(Ljava/lang/String;)V");
-    }else gameEngine->setNativeHandle(ANativeWindow_fromSurface(env, surface));
+    } else gameEngine->setNativeHandle(ANativeWindow_fromSurface(env, surface));
 
     return 0;
 }

@@ -429,7 +429,7 @@ class BoundBox2D extends Component {
         this._right = 0
 
         this.size = size
-        pivot ||= Vec2.HALF.clone()
+        pivot = pivot || Vec2.HALF.clone()
         this.pivot = pivot
 
         let width = size.x

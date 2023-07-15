@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.18)
 
 option(FILAMENT_SUPPORTS_VULKAN "Enables Vulkan on Android" OFF)
 
@@ -26,6 +26,10 @@ set(FILAMENT_DIR ${libs_DIR}/filament)
 add_library(filament STATIC IMPORTED)
 set_target_properties(filament PROPERTIES IMPORTED_LOCATION
         ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libfilament.a)
+
+add_library(spine-cpp STATIC IMPORTED)
+set_target_properties(spine-cpp PROPERTIES IMPORTED_LOCATION
+        ${libs_DIR}/spine/lib/${ANDROID_ABI}/libspine-cpp.a)
 
 add_library(backend STATIC IMPORTED)
 set_target_properties(backend PROPERTIES IMPORTED_LOCATION
@@ -78,10 +82,34 @@ set_target_properties(basis_transcoder PROPERTIES IMPORTED_LOCATION
 add_library(zstd STATIC IMPORTED)
 set_target_properties(zstd PROPERTIES IMPORTED_LOCATION
         ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libzstd.a)
-        
-add_library(spine-cpp STATIC IMPORTED)
-set_target_properties(spine-cpp PROPERTIES IMPORTED_LOCATION
-        ${libs_DIR}/spine/lib/${ANDROID_ABI}/libspine-cpp.a)
+
+add_library(stb STATIC IMPORTED)
+set_target_properties(stb PROPERTIES IMPORTED_LOCATION
+        ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libstb.a)
+
+add_library(image STATIC IMPORTED)
+set_target_properties(image PROPERTIES IMPORTED_LOCATION
+        ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libimage.a)
+
+add_library(uberarchive STATIC IMPORTED)
+set_target_properties(uberarchive PROPERTIES IMPORTED_LOCATION
+        ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libuberarchive.a)
+
+add_library(uberzlib STATIC IMPORTED)
+set_target_properties(uberzlib PROPERTIES IMPORTED_LOCATION
+        ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libuberzlib.a)
+
+add_library(dracodec STATIC IMPORTED)
+set_target_properties(dracodec PROPERTIES IMPORTED_LOCATION
+        ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libdracodec.a)
+
+add_library(meshoptimizer STATIC IMPORTED)
+set_target_properties(meshoptimizer PROPERTIES IMPORTED_LOCATION
+        ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libmeshoptimizer.a)
+
+add_library(gltfio STATIC IMPORTED)
+set_target_properties(gltfio PROPERTIES IMPORTED_LOCATION
+        ${FILAMENT_DIR}/lib/${ANDROID_ABI}/libgltfio_core.a)
 
 # ${ANDROID_ABI} is handy for our purpose here. Probably this ${ANDROID_ABI} is
 # the most valuable thing of this sample, the rest are pretty much normal cmake
@@ -90,20 +118,21 @@ set_target_properties(jsc PROPERTIES IMPORTED_LOCATION
         ${libs_DIR}/jsc/lib/${ANDROID_ABI}/libjsc.so)
 
 # build application's shared lib
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fno-rtti")
 
 add_definitions("-DANDROID")
-
 add_library(Test SHARED GameEngine.cpp Test.cpp)
 
 target_include_directories(Test PRIVATE
         ..
         ${libs_DIR}/jsc
-        ${libs_DIR}/filament/include)
+        ${libs_DIR}/filament/include
+        ${libs_DIR}/spine/include)
 
 target_link_libraries(Test
         PRIVATE jsc
         PRIVATE filament
+        PRIVATE spine-cpp
         PRIVATE backend
         PRIVATE filaflat
         PRIVATE filabridge
@@ -118,6 +147,13 @@ target_link_libraries(Test
         PRIVATE utils
         PRIVATE smol-v
         PRIVATE zstd
+        PRIVATE image
+        PRIVATE stb
+        PRIVATE uberarchive
+        PRIVATE uberzlib
+        PRIVATE dracodec
+        PRIVATE meshoptimizer
+        PRIVATE gltfio
         PRIVATE basis_transcoder
         PRIVATE ktxreader
         PUBLIC geometry)
