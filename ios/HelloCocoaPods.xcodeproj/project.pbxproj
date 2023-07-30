@@ -386,6 +386,7 @@
 					"\"${PODS_ROOT}/Headers/Public\"",
 					"\"${PODS_ROOT}/Headers/Public/Filament\"",
 					"\"${PODS_ROOT}/../../android/app/libs/spine/include\"",
+					"\"${PODS_ROOT}/../../android/app/libs/bullet/include\"",
 				);
 				INFOPLIST_FILE = HelloCocoaPods/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
@@ -397,6 +398,7 @@
 					"$(inherited)",
 					"\"${PODS_ROOT}/Filament/lib/universal\"",
 					"\"${PODS_ROOT}/../../android/app/libs/spine/lib/ios\"",
+					"\"${PODS_ROOT}/../../android/app/libs/bullet/lib/ios\"",
 				);
 				OTHER_CFLAGS = "";
 				OTHER_CPLUSPLUSFLAGS = (
@@ -431,6 +433,7 @@
 					"-l\"viewer\"",
 					"-l\"zstd\"",
 					"-l\"spine-cpp\"",
+					"-l\"bullet\"",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = me.filament.HelloCocoaPods;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -451,6 +454,7 @@
 					"\"${PODS_ROOT}/Headers/Public\"",
 					"\"${PODS_ROOT}/Headers/Public/Filament\"",
 					"\"${PODS_ROOT}/../../android/app/libs/spine/include\"",
+					"\"${PODS_ROOT}/../../android/app/libs/bullet/include\"",
 				);
 				INFOPLIST_FILE = HelloCocoaPods/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
@@ -462,6 +466,7 @@
 					"$(inherited)",
 					"\"${PODS_ROOT}/Filament/lib/universal\"",
 					"\"${PODS_ROOT}/../../android/app/libs/spine/lib/ios\"",
+					"\"${PODS_ROOT}/../../android/app/libs/bullet/lib/ios\"",
 				);
 				OTHER_CFLAGS = "";
 				OTHER_CPLUSPLUSFLAGS = (
@@ -496,6 +501,7 @@
 					"-l\"viewer\"",
 					"-l\"zstd\"",
 					"-l\"spine-cpp\"",
+					"-l\"bullet\"",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = me.filament.HelloCocoaPods;
 				PRODUCT_NAME = "$(TARGET_NAME)";

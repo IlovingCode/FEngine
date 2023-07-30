@@ -67,13 +67,13 @@ class UIController extends Component {
     update(dt) {
         this.timer += dt
 
-        for (let i = 2; i < 4; i++) {
+        for (let i = 2; i < 4; ++i) {
             let progressBar = uiRoot.children[i].getComponent(ProgressBar)
             let c = progressBar.get() + dt
             progressBar.set(c - Math.floor(c))
         }
 
-        // globalThis.log(dt)
+        // console.log(dt)
         let radial = uiRoot.children[6].getComponent(SpriteRadial)
         radial.setAngle(this.timer % (Math.PI * 2))
         radial.onBoundUpdated(radial.node.getComponent(BoundBox2D))
@@ -98,7 +98,7 @@ void function init() {
     node.position.z = 1
     new Camera(node)
 
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 2; ++i) {
         node = uiRoot.addChild()
         bound = new BoundBox2D(node, new Vec2(200, 28))
         new SpriteSliced(node, textures.progress_bg)
@@ -141,7 +141,7 @@ void function init() {
 
     // let content = 'QqWwEeRrTtYyUuIiOoPpAaSsDdFfGgHhJjKkLlZzXxCcVvBbNnMm'
 
-    // for (let i = 0; i < 200; i++) {
+    // for (let i = 0; i < 200; ++i) {
     //     child = node.addChild()
     //     bound = new BoundBox2D(child, new Vec2(50, 50))
     //     new SpriteSimple(child, textures.red)

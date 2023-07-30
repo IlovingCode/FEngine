@@ -15,3 +15,7 @@ local.properties
 
 Podfile.lock
 .DS_Store
+
+CMakeFiles
+Makefile
+CMakeCache.txt

@@ -603,6 +603,16 @@ class BoundBox2D extends Component {
 }
 
 const UI_LAYER = 0x1
+const PhysicsShape = Object.freeze({
+    SPHERE: 0,
+    CAPSULEX: 1,
+    CAPSULEY: 2,
+    CAPSULEZ: 3,
+    BOX: 4,
+    CYLINDERX: 5,
+    CYLINDERY: 6,
+    CYLINDERZ: 7,
+})
 
 class TextSimple extends Component {
     constructor(node, font, size, align = 0, max = 10) {
@@ -691,7 +701,7 @@ class TextSimple extends Component {
         let space = data[' '].ax * scale
         y = -bound.top
 
-        for (let i = 0; i < lines.length; i++) {
+        for (let i = 0; i < lines.length; ++i) {
             x = bound.left + this.textAlign * (max - linesWidth[i])
 
             for (let c of lines[i]) {
@@ -760,7 +770,7 @@ class SpriteSimple extends Component {
             } else parent = parent.parent
         }
 
-        if (isMask) maskId++
+        if (isMask) ++maskId
 
         this.maskId = maskId
         this.vb = this.createData(image)
@@ -982,7 +992,7 @@ class SpriteRadial extends SpriteSimple {
         angle -= count * (Math.PI / 4)
         let bias = this.bias
 
-        for (let i = 0; i < bias.length; i++) {
+        for (let i = 0; i < bias.length; ++i) {
             let num = i % 2
 
             if (count == i) {
@@ -1260,7 +1270,7 @@ class SpineSimple extends Component {
 }
 
 class ModelSimple extends Component {
-    constructor(node, data, nameMap) {
+    constructor(node, data) {
         super(node)
 
         this.data = data
@@ -1288,6 +1298,30 @@ class ModelSimple extends Component {
 
         this.timer += dt
         globalThis.playAnimation(this.native, this.currentAnim, this.timer)
+    }
+}
+
+const dynamicsBodies = [] 
+
+class RigidBody extends Component {
+    constructor(node, mass, type, ...params) {
+        super(node)
+
+        let body = this.native = globalThis.addRigidBody(mass, type, ...params)
+        globalThis.updateRigidBody(node, body)
+
+        if(mass > 0) dynamicsBodies.push(body)
+    }
+
+    setPosition(x, y, z) {
+        let position = this.node.position
+        position.x = x
+        position.y = y
+        position.z = z
+
+        this.node.isDirty = true
+
+        // globalThis.updateRigidBody(node, )
     }
 }
 

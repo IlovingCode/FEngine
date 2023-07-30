@@ -50,6 +50,8 @@
 #include <gltfio/math.h>
 #include <gltfio/Animator.h>
 
+#include <btBulletDynamicsCommon.h>
+
 #include <JavaScriptCore/JavaScript.h>
 #include "Object_C_Interface.h"
 
@@ -79,6 +81,8 @@ SwapChain *swapChain;
 AssetLoader *assetLoader;
 void *nativeHandle;
 
+btDiscreteDynamicsWorld *dynamicsWorld;
+
 #ifdef ANDROID
 AAssetManager *assetManager = nullptr;
 #else
@@ -105,6 +109,41 @@ GameEngine::~GameEngine()
     //    JSContextGroupRef contextGroup = JSContextGetGroup(globalContext);
     JSGlobalContextRelease(globalContext);
     //    JSContextGroupRelease(contextGroup);
+
+    if (dynamicsWorld)
+    {
+        // cleanup in the reverse order of creation/initialization
+        // remove the rigidbodies from the dynamics world and delete them
+        for (int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
+        {
+            btCollisionObject *obj = dynamicsWorld->getCollisionObjectArray()[i];
+            btRigidBody *body = btRigidBody::upcast(obj);
+            if (body && body->getMotionState())
+            {
+                delete body->getMotionState();
+            }
+            dynamicsWorld->removeCollisionObject(obj);
+            delete obj;
+        }
+
+        btDispatcher *dispatcher = dynamicsWorld->getDispatcher();
+        btBroadphaseInterface *overlappingPairCache = dynamicsWorld->getBroadphase();
+        btConstraintSolver *solver = dynamicsWorld->getConstraintSolver();
+
+        // delete dynamics world
+        delete dynamicsWorld;
+
+        // delete solver
+        delete solver;
+
+        // delete broadphase
+        delete overlappingPairCache;
+
+        // delete dispatcher
+        delete dispatcher;
+
+        dynamicsWorld = nullptr;
+    }
 }
 
 string JSValueToStdString(JSContextRef context, JSValueRef jsValue)
@@ -127,7 +166,7 @@ const uint8_t *loadFile(const char *filename, size_t *size)
 
 #ifdef ANDROID
     AAsset *asset = AAssetManager_open(assetManager, filename, 0);
-    data = (uint8_t*)AAsset_getBuffer(asset);
+    data = (uint8_t *)AAsset_getBuffer(asset);
     *size = AAsset_getLength(asset);
 //    AAsset_close(asset);
 #else
@@ -182,7 +221,7 @@ math::float3 eulerAngles(math::quatf q)
 JSCALLBACK(log)
 {
     string str = "";
-    for (uint8_t i = 0; i < argumentCount; i++)
+    for (uint8_t i = 0; i < argumentCount; ++i)
     {
         str += JSValueToStdString(ctx, arguments[i]) + ' ';
     }
@@ -299,7 +338,7 @@ JSCALLBACK(addModel)
     JSObjectSetProperty(ctx, nodes, name, id, kJSPropertyAttributeNone, nullptr);
     JSStringRelease(name);
 
-    for (size_t i = 0; i < count; i++)
+    for (size_t i = 0; i < count; ++i)
     {
         e = entities[i];
         name = JSStringCreateWithUTF8CString(primary->getName(e));
@@ -339,7 +378,7 @@ JSCALLBACK(addModel)
 
     Animator *animator = bundle->getAnimator();
     count = animator->getAnimationCount();
-    for (size_t i = 0; i < count; i++)
+    for (size_t i = 0; i < count; ++i)
     {
         name = JSStringCreateWithUTF8CString(animator->getAnimationName(i));
         id = JSValueMakeNumber(ctx, i);
@@ -578,7 +617,7 @@ IndexBuffer *getIndexBuffer()
         };
 
         uint16_t count = 0, id = 78;
-        for (int i = 0; i < MAXSTRINGLENGTH; i++)
+        for (int i = 0; i < MAXSTRINGLENGTH; ++i)
         {
             TEMPLATE[id + 0] = count + 0;
             TEMPLATE[id + 1] = count + 1;
@@ -679,7 +718,7 @@ JSCALLBACK(updateMaterial)
 //     }
 //
 //     auto& rm = engine->getRenderableManager();
-//     for (uint32_t i = 0; i < count; i++) {
+//     for (uint32_t i = 0; i < count; ++i) {
 //         MaterialInstance* material = rm.getMaterialInstanceAt(rm.getInstance(Entity::import(d[i])), 0);
 //
 //         if(argumentCount > 1) material->setScissor(left, bottom, width, height);
@@ -964,7 +1003,7 @@ JSCALLBACK(updateSpine)
 
     Vector<Slot *> slots = skeleton->getSlots();
     size_t vertCount = 0;
-    for (size_t i = 0; i < slots.size(); i++)
+    for (size_t i = 0; i < slots.size(); ++i)
     {
         Slot *slot = slots[i];
         Attachment *attachment = slot->getAttachment();
@@ -1013,7 +1052,7 @@ JSCALLBACK(addSpine)
     Vector<Slot *> slots = skeleton->getSlots();
     size_t vertCount = 0, trisCount = 0;
 
-    for (size_t i = 0; i < slots.size(); i++)
+    for (size_t i = 0; i < slots.size(); ++i)
     {
         Slot *slot = slots[i];
         Attachment *attachment = slot->getAttachment();
@@ -1040,7 +1079,7 @@ JSCALLBACK(addSpine)
     vertCount = 0;
     trisCount = 0;
 
-    for (size_t i = 0; i < slots.size(); i++)
+    for (size_t i = 0; i < slots.size(); ++i)
     {
         Slot *slot = slots[i];
         Attachment *attachment = slot->getAttachment();
@@ -1053,7 +1092,7 @@ JSCALLBACK(addSpine)
             texture = (Texture *)((AtlasRegion *)region->getRegion())->page->texture;
             uvs = region->getUVs().buffer();
 
-            for (size_t j = 0; j < 4; j++)
+            for (size_t j = 0; j < 4; ++j)
             {
                 vertices[(vertCount + j) * 4 + 2] = uvs[j * 2 + 0];
                 vertices[(vertCount + j) * 4 + 3] = 1 - uvs[j * 2 + 1];
@@ -1077,10 +1116,10 @@ JSCALLBACK(addSpine)
             size_t size = mesh->getWorldVerticesLength() >> 1;
             uvs = mesh->getUVs().buffer();
 
-            for (size_t j = 0; j < tris.size(); j++)
+            for (size_t j = 0; j < tris.size(); ++j)
                 indices[trisCount + j] = vertCount + tris[j];
 
-            for (size_t j = 0; j < size; j++)
+            for (size_t j = 0; j < size; ++j)
             {
                 vertices[(vertCount + j) * 4 + 2] = uvs[j * 2 + 0];
                 vertices[(vertCount + j) * 4 + 3] = 1 - uvs[j * 2 + 1];
@@ -1272,6 +1311,118 @@ JSCALLBACK(updateLight)
     return nullptr;
 }
 
+JSCALLBACK(addRigidBody)
+{
+    btScalar mass(JSValueToNumber(ctx, arguments[0], nullptr));
+    size_t type = (size_t)JSValueToNumber(ctx, arguments[1], nullptr);
+    btVector3 data;
+
+    for(size_t i = 2; i < argumentCount; ++i) {
+        data[i - 2] = JSValueToNumber(ctx, arguments[i], nullptr);
+    }
+
+    btCollisionShape *shape = nullptr;
+
+    switch (type)
+    {
+    case 0:
+        shape = new btSphereShape(data[0]);
+        break;
+    case 1:
+        shape = new btCapsuleShapeX(data[0], data[1]);
+        break;
+    case 2:
+        shape = new btCapsuleShape(data[0], data[1]);
+        break;
+    case 3:
+        shape = new btCapsuleShapeZ(data[0], data[1]);
+        break;
+    case 4:
+        shape = new btBoxShape(data);
+        break;
+    case 5:
+        shape = new btCylinderShapeX(data);
+        break;
+    case 6:
+        shape = new btCylinderShape(data);
+        break;
+    case 7:
+        shape = new btCylinderShapeZ(data);
+        break;
+    default:
+        break;
+    }
+
+    btTransform transform;
+    transform.setIdentity();
+
+    // rigidbody is dynamic if and only if mass is non zero, otherwise static
+    bool isDynamic = (mass != 0.f);
+
+    btVector3 localInertia(0, 0, 0);
+    if (isDynamic && shape)
+        shape->calculateLocalInertia(mass, localInertia);
+
+    // using motionstate is optional, it provides interpolation capabilities, and only synchronizes 'active' objects
+    btDefaultMotionState *myMotionState = new btDefaultMotionState(transform);
+    btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, myMotionState, shape, localInertia);
+    btRigidBody *body = new btRigidBody(rbInfo);
+
+    // add the body to the dynamics world
+    dynamicsWorld->addRigidBody(body);
+
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, body, sizeof(body), nullptr, nullptr, nullptr);
+}
+
+JSCALLBACK(beginPhysics)
+{
+    ///-----initialization_start-----
+
+    /// collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
+    btDefaultCollisionConfiguration *collisionConfiguration = new btDefaultCollisionConfiguration();
+
+    /// use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)
+    btCollisionDispatcher *dispatcher = new btCollisionDispatcher(collisionConfiguration);
+
+    /// btDbvtBroadphase is a good general purpose broadphase. You can also try out btAxis3Sweep.
+    btBroadphaseInterface *overlappingPairCache = new btDbvtBroadphase();
+
+    /// the default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
+    btSequentialImpulseConstraintSolver *solver = new btSequentialImpulseConstraintSolver;
+
+    dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+
+    dynamicsWorld->setGravity(btVector3(0, -9.8, 0));
+
+    ///-----initialization_end-----
+    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, collisionConfiguration, sizeof(collisionConfiguration), nullptr, nullptr, nullptr);
+}
+
+JSCALLBACK(updateRigidBody)
+{
+    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    void *data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+    btRigidBody *body = static_cast<btRigidBody *>(data);
+
+    uint32_t id = JSValueToNumber(ctx, arguments[1], nullptr);
+    Entity entity = Entity::import(id);
+
+    auto &tcm = renderer->getEngine()->getTransformManager();
+
+    const math::mat4f world = tcm.getTransform(tcm.getInstance(entity));
+
+    //    math::float3 translation, scale, rotation;
+    //    math::quatf quaternion;
+
+    //    gltfio::decomposeMatrix(world, &translation, &quaternion, &scale);
+
+    btTransform transform = body->getWorldTransform();
+
+    transform.setFromOpenGLMatrix(world.asArray());
+
+    return arguments[0];
+}
+
 JSCALLBACK(updateCamera)
 {
     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
@@ -1455,6 +1606,7 @@ GameEngine::GameEngine(void *nativeWindow, double now)
     registerNativeFunction("updateLight", updateLight, globalObject);
     registerNativeFunction("playAnimation", playAnimation, globalObject);
     registerNativeFunction("setEnvironment", setEnvironment, globalObject);
+    registerNativeFunction("beginPhysics", beginPhysics, globalObject);
 
 #ifdef ANDROID
     AAsset *asset = AAssetManager_open(assetManager, "bundle.js", 0);
@@ -1498,9 +1650,10 @@ GameEngine::GameEngine(void *nativeWindow, double now)
 
 void GameEngine::update(double now)
 {
-    JSValueRef dt = JSValueMakeNumber(globalContext, now - current_time);
+    double delta = now - current_time;
     current_time = now;
 
+    JSValueRef dt = JSValueMakeNumber(globalContext, delta);
     static JSObjectRef updateLoop;
 
     if (updateLoop == nullptr)

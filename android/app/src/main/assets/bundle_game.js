@@ -160,5 +160,10 @@ void function init() {
         ibl: 'env/env_ibl.ktx',
         indirect_intensity: LIGHT_SCALE,
     })
+
+    // globalThis.beginPhysics()
+
+    // node = modelview.getNodeByName('Cylinder')
+    // new RigidBody(node, 0, PhysicsShape.CYLINDERY, 120, 10, 120)
 }();
 
