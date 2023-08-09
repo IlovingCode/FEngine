@@ -24,6 +24,17 @@ gameRoot.textures = {
     }
 }
 
+gameRoot.models = {
+    amongus: {
+        native: null,
+        count: 0,
+    },
+    cube: {
+        native: null,
+        count: 0,
+    }
+}
+
 let gameController = null
 
 class GameController extends Component {
@@ -144,8 +155,7 @@ void function init() {
     // pos.y = textures.bg0.height * .35
     // new Camera(node).scale = .5
 
-    let model = globalThis.loadModel('amongus.glb')
-    let modelview = gameRoot.importNodesFromModel(model)
+    let modelview = gameRoot.importNodesFromModel(gameRoot.models.amongus)
 
     gameRoot.light && globalThis.updateLight(gameRoot.light.id(), modelview.data.lightIntensity * LIGHT_SCALE)
     gameRoot.camera.scale = .5
@@ -160,6 +170,17 @@ void function init() {
         ibl: 'env/env_ibl.ktx',
         indirect_intensity: LIGHT_SCALE,
     })
+
+    for(let i = 0; i < 5; i++) {
+        for(let j = 0; j < 5; j++) {
+            let cube = gameRoot.importNodesFromModel(gameRoot.models.cube)
+            cube.node.position.y = (i - 3) * 3
+            cube.node.position.z = (j - 3) * 3
+            cube.node.isDirty = true
+        }
+    }
+
+    // console.log(JSON.stringify(cube.data))
 
     // globalThis.beginPhysics()
 

@@ -289,7 +289,7 @@ class Scene extends FNode {
     }
 
     init() {
-        let { textures, font, spines } = this
+        let { textures, font, spines, models } = this
         if (textures) {
             for (let i in textures) textures[i].native = globalThis.loadImage(i + '.ktx2')
         }
@@ -301,6 +301,10 @@ class Scene extends FNode {
                 let spineData = spines[i]
                 globalThis.loadSpine(spineData.path, spineData, spineData.defaultMix || 0)
             }
+        }
+
+        if(models) {
+            for(let i in models) models[i].native = globalThis.loadModel(i + '.glb')
         }
 
         return this
@@ -332,7 +336,8 @@ class Scene extends FNode {
 
     importNodesFromModel(model) {
         let data = { nodes: {}, relations: {}, animations: {}, animationDurations: {} }
-        let native = globalThis.addModel(model, this.nativeScene[0], data)
+        let native = globalThis.addModel(model.native, this.nativeScene[0], data, model.count)
+        model.count++
 
         let { nodes, relations, fov } = data
         let idMap = {}
@@ -356,7 +361,7 @@ class Scene extends FNode {
         root.parent = this
 
         if (nameMap.Camera_Orientation) new Camera(nameMap.Camera_Orientation, true).fov = fov
-        this.light = nameMap.Light_Orientation
+        if (nameMap.Light_Orientation) this.light = nameMap.Light_Orientation
 
         let modelSimple = new ModelSimple(root, data)
         modelSimple.native = native

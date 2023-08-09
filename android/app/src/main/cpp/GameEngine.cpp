@@ -325,8 +325,11 @@ JSCALLBACK(addModel)
     JSObjectRef animationDurations = JSValueToObject(ctx, JSObjectGetProperty(ctx, data, name, nullptr), nullptr);
     JSStringRelease(name);
 
-    Engine *engine = renderer->getEngine();
+    size_t index = JSValueToNumber(ctx, arguments[3], nullptr);
     FilamentInstance *bundle = primary->getInstance();
+    if(index >= primary->getAssetInstanceCount()) bundle = assetLoader->createInstance(primary);
+    
+    Engine *engine = renderer->getEngine();
     const Entity *entities = bundle->getEntities();
     size_t count = bundle->getEntityCount();
     scene->addEntities(entities, count);
@@ -351,11 +354,6 @@ JSCALLBACK(addModel)
 
         JSStringRelease(name);
     }
-
-    IndirectLight *indirect = IndirectLight::Builder()
-                                  .intensity(300000.f)
-                                  .build(*engine);
-    scene->setIndirectLight(indirect);
 
     if (primary->getCameraEntityCount() > 0)
     {
