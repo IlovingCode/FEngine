@@ -15,21 +15,35 @@
  */
 package com.example.helloaar
 
+import android.annotation.SuppressLint
+import android.webkit.JavascriptInterface
 import android.app.Activity
 import android.content.res.AssetFileDescriptor
 import android.content.res.AssetManager
+import android.graphics.Color
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.*
 import android.view.Choreographer.FrameCallback
 import android.view.SurfaceHolder.Callback
+import android.webkit.WebView
+import android.view.ViewGroup.LayoutParams
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 
+class JSInterface(val activity: MainActivity) {
+    @JavascriptInterface
+    fun sendInput(x: Int, y: Int, state: Int) {
+        activity.onInput(x.toFloat(), y.toFloat(), state)
+    }
+}
 
 class MainActivity : Activity(), Callback, FrameCallback {
     val mediaPlayers= Array(5) { MediaPlayer() }
     val audioTracks = mutableMapOf<String, AssetFileDescriptor>()
 
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         /*
@@ -38,11 +52,24 @@ class MainActivity : Activity(), Callback, FrameCallback {
          * function.
          */
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.decorView.windowInsetsController?.hide(WindowInsets.Type.navigationBars())
+        }
+
         val surfaceView = SurfaceView(this)
         setContentView(surfaceView)
-        surfaceView.setZOrderOnTop(true)
+//        surfaceView.setZOrderOnTop(true)
 
         surfaceView.holder.addCallback(this)
+
+        val myWebView = WebView(this)
+        myWebView.isVerticalFadingEdgeEnabled = false
+        myWebView.settings.javaScriptEnabled = true
+        myWebView.setBackgroundColor(Color.TRANSPARENT)
+        myWebView.addJavascriptInterface(JSInterface(this), "webkit")
+
+        addContentView(myWebView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        myWebView.loadUrl("file:///android_asset/index.html")
     }
 
     fun playAudio(name: String) {

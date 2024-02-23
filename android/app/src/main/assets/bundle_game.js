@@ -171,21 +171,21 @@ void function init() {
         indirect_intensity: LIGHT_SCALE,
     })
 
-    for(let i = 0; i < 5; i++) {
-        for(let j = 0; j < 5; j++) {
-            let cube = gameRoot.importNodesFromModel(gameRoot.models.cube)
-            cube.node.position.x = (i - 3) * 3
-            cube.node.position.z = (j - 3) * 3
-            cube.node.position.y = 3
-            cube.node.isDirty = true
-        }
-    }
+    // for(let i = 0; i < 5; i++) {
+    //     for(let j = 0; j < 5; j++) {
+    //         let cube = gameRoot.importNodesFromModel(gameRoot.models.cube)
+    //         cube.node.position.x = (i - 3) * 3
+    //         cube.node.position.z = (j - 3) * 3
+    //         cube.node.position.y = 3
+    //         cube.node.isDirty = true
+    //     }
+    // }
 
     // console.log(JSON.stringify(cube.data))
 
-    globalThis.beginPhysics()
+    // globalThis.beginPhysics()
 
-    node = modelview.getNodeByName('Cylinder')
-    new RigidBody(node, 0, PhysicsShape.CYLINDERY, 120, 10, 120)
+    // node = modelview.getNodeByName('Cylinder')
+    // new RigidBody(node, 0, PhysicsShape.CYLINDERY, 120, 10, 120)
 }();
 

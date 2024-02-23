@@ -110,6 +110,8 @@ void function init() {
 
         new ProgressBar(node).set(i * .2)
         new Button(node)
+
+        node.setActive(false)
     }
 
     node = uiRoot.addChild()
@@ -122,6 +124,7 @@ void function init() {
     new SpriteSliced(child, textures.progress_fill)
 
     new Toggle(node)
+    node.setActive(false)
 
     node = uiRoot.addChild()
     bound = new BoundBox2D(node, new Vec2(300, 300))

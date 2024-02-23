@@ -50,7 +50,7 @@
 #include <gltfio/math.h>
 #include <gltfio/Animator.h>
 
-#include <btBulletDynamicsCommon.h>
+// #include <btBulletDynamicsCommon.h>
 
 #include <JavaScriptCore/JavaScript.h>
 #include "Object_C_Interface.h"
@@ -81,7 +81,7 @@ SwapChain *swapChain;
 AssetLoader *assetLoader;
 void *nativeHandle;
 
-btDiscreteDynamicsWorld *dynamicsWorld;
+// btDiscreteDynamicsWorld *dynamicsWorld;
 
 #ifdef ANDROID
 AAssetManager *assetManager = nullptr;
@@ -110,40 +110,40 @@ GameEngine::~GameEngine()
     JSGlobalContextRelease(globalContext);
     //    JSContextGroupRelease(contextGroup);
 
-    if (dynamicsWorld)
-    {
-        // cleanup in the reverse order of creation/initialization
-        // remove the rigidbodies from the dynamics world and delete them
-        for (int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
-        {
-            btCollisionObject *obj = dynamicsWorld->getCollisionObjectArray()[i];
-            btRigidBody *body = btRigidBody::upcast(obj);
-            if (body && body->getMotionState())
-            {
-                delete body->getMotionState();
-            }
-            dynamicsWorld->removeCollisionObject(obj);
-            delete obj;
-        }
+    // if (dynamicsWorld)
+    // {
+    //     // cleanup in the reverse order of creation/initialization
+    //     // remove the rigidbodies from the dynamics world and delete them
+    //     for (int i = dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
+    //     {
+    //         btCollisionObject *obj = dynamicsWorld->getCollisionObjectArray()[i];
+    //         btRigidBody *body = btRigidBody::upcast(obj);
+    //         if (body && body->getMotionState())
+    //         {
+    //             delete body->getMotionState();
+    //         }
+    //         dynamicsWorld->removeCollisionObject(obj);
+    //         delete obj;
+    //     }
 
-        btDispatcher *dispatcher = dynamicsWorld->getDispatcher();
-        btBroadphaseInterface *overlappingPairCache = dynamicsWorld->getBroadphase();
-        btConstraintSolver *solver = dynamicsWorld->getConstraintSolver();
+    //     btDispatcher *dispatcher = dynamicsWorld->getDispatcher();
+    //     btBroadphaseInterface *overlappingPairCache = dynamicsWorld->getBroadphase();
+    //     btConstraintSolver *solver = dynamicsWorld->getConstraintSolver();
 
-        // delete dynamics world
-        delete dynamicsWorld;
+    //     // delete dynamics world
+    //     delete dynamicsWorld;
 
-        // delete solver
-        delete solver;
+    //     // delete solver
+    //     delete solver;
 
-        // delete broadphase
-        delete overlappingPairCache;
+    //     // delete broadphase
+    //     delete overlappingPairCache;
 
-        // delete dispatcher
-        delete dispatcher;
+    //     // delete dispatcher
+    //     delete dispatcher;
 
-        dynamicsWorld = nullptr;
-    }
+    //     dynamicsWorld = nullptr;
+    // }
 }
 
 string JSValueToStdString(JSContextRef context, JSValueRef jsValue)
@@ -1309,117 +1309,117 @@ JSCALLBACK(updateLight)
     return nullptr;
 }
 
-JSCALLBACK(addRigidBody)
-{
-    btScalar mass(JSValueToNumber(ctx, arguments[0], nullptr));
-    size_t type = (size_t)JSValueToNumber(ctx, arguments[1], nullptr);
-    btVector3 data;
+// JSCALLBACK(addRigidBody)
+// {
+//     btScalar mass(JSValueToNumber(ctx, arguments[0], nullptr));
+//     size_t type = (size_t)JSValueToNumber(ctx, arguments[1], nullptr);
+//     btVector3 data;
 
-    for(size_t i = 2; i < argumentCount; ++i) {
-        data[i - 2] = JSValueToNumber(ctx, arguments[i], nullptr);
-    }
+//     for(size_t i = 2; i < argumentCount; ++i) {
+//         data[i - 2] = JSValueToNumber(ctx, arguments[i], nullptr);
+//     }
 
-    btCollisionShape *shape = nullptr;
+//     btCollisionShape *shape = nullptr;
 
-    switch (type)
-    {
-    case 0:
-        shape = new btSphereShape(data[0]);
-        break;
-    case 1:
-        shape = new btCapsuleShapeX(data[0], data[1]);
-        break;
-    case 2:
-        shape = new btCapsuleShape(data[0], data[1]);
-        break;
-    case 3:
-        shape = new btCapsuleShapeZ(data[0], data[1]);
-        break;
-    case 4:
-        shape = new btBoxShape(data);
-        break;
-    case 5:
-        shape = new btCylinderShapeX(data);
-        break;
-    case 6:
-        shape = new btCylinderShape(data);
-        break;
-    case 7:
-        shape = new btCylinderShapeZ(data);
-        break;
-    default:
-        break;
-    }
+//     switch (type)
+//     {
+//     case 0:
+//         shape = new btSphereShape(data[0]);
+//         break;
+//     case 1:
+//         shape = new btCapsuleShapeX(data[0], data[1]);
+//         break;
+//     case 2:
+//         shape = new btCapsuleShape(data[0], data[1]);
+//         break;
+//     case 3:
+//         shape = new btCapsuleShapeZ(data[0], data[1]);
+//         break;
+//     case 4:
+//         shape = new btBoxShape(data);
+//         break;
+//     case 5:
+//         shape = new btCylinderShapeX(data);
+//         break;
+//     case 6:
+//         shape = new btCylinderShape(data);
+//         break;
+//     case 7:
+//         shape = new btCylinderShapeZ(data);
+//         break;
+//     default:
+//         break;
+//     }
 
-    btTransform transform;
-    transform.setIdentity();
+//     btTransform transform;
+//     transform.setIdentity();
 
-    // rigidbody is dynamic if and only if mass is non zero, otherwise static
-    bool isDynamic = (mass != 0.f);
+//     // rigidbody is dynamic if and only if mass is non zero, otherwise static
+//     bool isDynamic = (mass != 0.f);
 
-    btVector3 localInertia(0, 0, 0);
-    if (isDynamic && shape)
-        shape->calculateLocalInertia(mass, localInertia);
+//     btVector3 localInertia(0, 0, 0);
+//     if (isDynamic && shape)
+//         shape->calculateLocalInertia(mass, localInertia);
 
-    // using motionstate is optional, it provides interpolation capabilities, and only synchronizes 'active' objects
-    btDefaultMotionState *myMotionState = new btDefaultMotionState(transform);
-    btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, myMotionState, shape, localInertia);
-    btRigidBody *body = new btRigidBody(rbInfo);
+//     // using motionstate is optional, it provides interpolation capabilities, and only synchronizes 'active' objects
+//     btDefaultMotionState *myMotionState = new btDefaultMotionState(transform);
+//     btRigidBody::btRigidBodyConstructionInfo rbInfo(mass, myMotionState, shape, localInertia);
+//     btRigidBody *body = new btRigidBody(rbInfo);
 
-    // add the body to the dynamics world
-    dynamicsWorld->addRigidBody(body);
+//     // add the body to the dynamics world
+//     dynamicsWorld->addRigidBody(body);
 
-    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, body, sizeof(body), nullptr, nullptr, nullptr);
-}
+//     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, body, sizeof(body), nullptr, nullptr, nullptr);
+// }
 
-JSCALLBACK(beginPhysics)
-{
-    ///-----initialization_start-----
+// JSCALLBACK(beginPhysics)
+// {
+//     ///-----initialization_start-----
 
-    /// collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
-    btDefaultCollisionConfiguration *collisionConfiguration = new btDefaultCollisionConfiguration();
+//     /// collision configuration contains default setup for memory, collision setup. Advanced users can create their own configuration.
+//     btDefaultCollisionConfiguration *collisionConfiguration = new btDefaultCollisionConfiguration();
 
-    /// use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)
-    btCollisionDispatcher *dispatcher = new btCollisionDispatcher(collisionConfiguration);
+//     /// use the default collision dispatcher. For parallel processing you can use a diffent dispatcher (see Extras/BulletMultiThreaded)
+//     btCollisionDispatcher *dispatcher = new btCollisionDispatcher(collisionConfiguration);
 
-    /// btDbvtBroadphase is a good general purpose broadphase. You can also try out btAxis3Sweep.
-    btBroadphaseInterface *overlappingPairCache = new btDbvtBroadphase();
+//     /// btDbvtBroadphase is a good general purpose broadphase. You can also try out btAxis3Sweep.
+//     btBroadphaseInterface *overlappingPairCache = new btDbvtBroadphase();
 
-    /// the default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
-    btSequentialImpulseConstraintSolver *solver = new btSequentialImpulseConstraintSolver;
+//     /// the default constraint solver. For parallel processing you can use a different solver (see Extras/BulletMultiThreaded)
+//     btSequentialImpulseConstraintSolver *solver = new btSequentialImpulseConstraintSolver;
 
-    dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+//     dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
 
-    dynamicsWorld->setGravity(btVector3(0, -9.8, 0));
+//     dynamicsWorld->setGravity(btVector3(0, -9.8, 0));
 
-    ///-----initialization_end-----
-    return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, collisionConfiguration, sizeof(collisionConfiguration), nullptr, nullptr, nullptr);
-}
+//     ///-----initialization_end-----
+//     return JSObjectMakeArrayBufferWithBytesNoCopy(ctx, collisionConfiguration, sizeof(collisionConfiguration), nullptr, nullptr, nullptr);
+// }
 
-JSCALLBACK(updateRigidBody)
-{
-    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
-    Entity entity = Entity::import(id);
+// JSCALLBACK(updateRigidBody)
+// {
+//     uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+//     Entity entity = Entity::import(id);
     
-    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
-    void *data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
-    btRigidBody *body = static_cast<btRigidBody *>(data);
+//     JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
+//     void *data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
+//     btRigidBody *body = static_cast<btRigidBody *>(data);
 
-    auto &tcm = renderer->getEngine()->getTransformManager();
+//     auto &tcm = renderer->getEngine()->getTransformManager();
 
-    const math::mat4f world = tcm.getTransform(tcm.getInstance(entity));
-    btTransform transform;
-    transform.setFromOpenGLMatrix(world.asArray());
+//     const math::mat4f world = tcm.getTransform(tcm.getInstance(entity));
+//     btTransform transform;
+//     transform.setFromOpenGLMatrix(world.asArray());
 
-    //    math::float3 translation, scale, rotation;
-    //    math::quatf quaternion;
+//     //    math::float3 translation, scale, rotation;
+//     //    math::quatf quaternion;
 
-    //    gltfio::decomposeMatrix(world, &translation, &quaternion, &scale);
+//     //    gltfio::decomposeMatrix(world, &translation, &quaternion, &scale);
 
-    body->getMotionState()->setWorldTransform(transform);
+//     body->getMotionState()->setWorldTransform(transform);
 
-    return arguments[0];
-}
+//     return arguments[0];
+// }
 
 JSCALLBACK(updateCamera)
 {
@@ -1604,9 +1604,9 @@ GameEngine::GameEngine(void *nativeWindow, double now)
     registerNativeFunction("updateLight", updateLight, globalObject);
     registerNativeFunction("playAnimation", playAnimation, globalObject);
     registerNativeFunction("setEnvironment", setEnvironment, globalObject);
-    registerNativeFunction("beginPhysics", beginPhysics, globalObject);
-    registerNativeFunction("addRigidBody", addRigidBody, globalObject);
-    registerNativeFunction("updateRigidBody", updateRigidBody, globalObject);
+    // registerNativeFunction("beginPhysics", beginPhysics, globalObject);
+    // registerNativeFunction("addRigidBody", addRigidBody, globalObject);
+    // registerNativeFunction("updateRigidBody", updateRigidBody, globalObject);
 
 #ifdef ANDROID
     AAsset *asset = AAssetManager_open(assetManager, "bundle.js", 0);

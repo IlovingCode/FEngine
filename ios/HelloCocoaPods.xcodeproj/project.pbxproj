@@ -21,6 +21,7 @@
 		AEB37A6D2997AB45009539B0 /* bakedColor_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6A2997AB45009539B0 /* bakedColor_ios.inc */; };
 		AEB37A6E2997AB45009539B0 /* bakedText_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6B2997AB45009539B0 /* bakedText_ios.inc */; };
 		AEB37A6F2997AB45009539B0 /* bakedMask_ios.inc in Sources */ = {isa = PBXBuildFile; fileRef = AEB37A6C2997AB45009539B0 /* bakedMask_ios.inc */; };
+		AEC6845A2B8916210031A89F /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AEC684592B8916200031A89F /* WebKit.framework */; };
 		AED07C8429B5268D003524B9 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AED07C8329B5268D003524B9 /* AVFAudio.framework */; };
 /* End PBXBuildFile section */
 
@@ -37,7 +38,6 @@
 		43C0904724B7DCE9009D291E /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		43C0904924B7DCE9009D291E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		43C0904A24B7DCE9009D291E /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		43C0905124B7DF20009D291E /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		9B0B8E3424AB80B4FB0F5FF1 /* Pods-HelloCocoaPods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.release.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.release.xcconfig"; sourceTree = "<group>"; };
 		AE1C45B029979318007B5933 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = ../../android/app/src/main/assets; sourceTree = "<group>"; };
 		AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -49,6 +49,7 @@
 		AEB37A6A2997AB45009539B0 /* bakedColor_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedColor_ios.inc; path = ../../android/app/src/main/cpp/bakedColor_ios.inc; sourceTree = "<group>"; };
 		AEB37A6B2997AB45009539B0 /* bakedText_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedText_ios.inc; path = ../../android/app/src/main/cpp/bakedText_ios.inc; sourceTree = "<group>"; };
 		AEB37A6C2997AB45009539B0 /* bakedMask_ios.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; name = bakedMask_ios.inc; path = ../../android/app/src/main/cpp/bakedMask_ios.inc; sourceTree = "<group>"; };
+		AEC684592B8916200031A89F /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		AED07C8329B5268D003524B9 /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
 		D8F6B088AA46E901D4C80A53 /* libPods-HelloCocoaPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HelloCocoaPods.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DBDD44F53C2D94EF626D2238 /* Pods-HelloCocoaPods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HelloCocoaPods.debug.xcconfig"; path = "Target Support Files/Pods-HelloCocoaPods/Pods-HelloCocoaPods.debug.xcconfig"; sourceTree = "<group>"; };
@@ -59,6 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AEC6845A2B8916210031A89F /* WebKit.framework in Frameworks */,
 				AED07C8429B5268D003524B9 /* AVFAudio.framework in Frameworks */,
 				AE1D8A2D284E98EA0031A866 /* JavaScriptCore.framework in Frameworks */,
 				20551D7E31AE7D51EE5C49CB /* libPods-HelloCocoaPods.a in Frameworks */,
@@ -116,9 +118,9 @@
 		66545F4C91B73CA97ED2371B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				AEC684592B8916200031A89F /* WebKit.framework */,
 				AED07C8329B5268D003524B9 /* AVFAudio.framework */,
 				AE1D8A2C284E98EA0031A866 /* JavaScriptCore.framework */,
-				43C0905124B7DF20009D291E /* MetalKit.framework */,
 				D8F6B088AA46E901D4C80A53 /* libPods-HelloCocoaPods.a */,
 			);
 			name = Frameworks;
