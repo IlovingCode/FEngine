@@ -1398,25 +1398,25 @@ JSCALLBACK(beginPhysics)
 
 JSCALLBACK(updateRigidBody)
 {
-    JSObjectRef array = JSValueToObject(ctx, arguments[0], nullptr);
+    uint32_t id = JSValueToNumber(ctx, arguments[0], nullptr);
+    Entity entity = Entity::import(id);
+    
+    JSObjectRef array = JSValueToObject(ctx, arguments[1], nullptr);
     void *data = JSObjectGetArrayBufferBytesPtr(ctx, array, nullptr);
     btRigidBody *body = static_cast<btRigidBody *>(data);
-
-    uint32_t id = JSValueToNumber(ctx, arguments[1], nullptr);
-    Entity entity = Entity::import(id);
 
     auto &tcm = renderer->getEngine()->getTransformManager();
 
     const math::mat4f world = tcm.getTransform(tcm.getInstance(entity));
+    btTransform transform;
+    transform.setFromOpenGLMatrix(world.asArray());
 
     //    math::float3 translation, scale, rotation;
     //    math::quatf quaternion;
 
     //    gltfio::decomposeMatrix(world, &translation, &quaternion, &scale);
 
-    btTransform transform = body->getWorldTransform();
-
-    transform.setFromOpenGLMatrix(world.asArray());
+    body->getMotionState()->setWorldTransform(transform);
 
     return arguments[0];
 }
@@ -1605,6 +1605,8 @@ GameEngine::GameEngine(void *nativeWindow, double now)
     registerNativeFunction("playAnimation", playAnimation, globalObject);
     registerNativeFunction("setEnvironment", setEnvironment, globalObject);
     registerNativeFunction("beginPhysics", beginPhysics, globalObject);
+    registerNativeFunction("addRigidBody", addRigidBody, globalObject);
+    registerNativeFunction("updateRigidBody", updateRigidBody, globalObject);
 
 #ifdef ANDROID
     AAsset *asset = AAssetManager_open(assetManager, "bundle.js", 0);
